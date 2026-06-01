@@ -219,7 +219,9 @@ const CONFIG = {
 // ══════════════════════════════════════
 // AUTH (Azure Static Web Apps)
 // ══════════════════════════════════════
-// getClientPrincipal mantenida por si se necesita en el futuro
+// ══════════════════════════════════════
+// AUTH (Azure Static Web Apps /.auth/me)
+// ══════════════════════════════════════
 async function getClientPrincipal() {
   try {
     const res = await fetch('/.auth/me');
@@ -234,29 +236,50 @@ async function getClientPrincipal() {
 
 async function initSecurity() {
   try {
-    // autenticación via SharePoint (mismo dominio, sin CORS)
-    const user = await getCurrentUser();
-    if (!user || (!user.email && !user.name)) {
-      alert("No se pudo validar el usuario en SharePoint");
+    // autenticación via Azure Static Web Apps (mismo dominio, sin CORS)
+    const principal = await getClientPrincipal();
+
+    // no autenticado → redirigir a login de Microsoft
+    if (!principal) {
+      window.location.href = "/.auth/login/aad?post_login_redirect_uri=" + encodeURIComponent(window.location.href);
       return false;
     }
-    // fallback: usar name si email viene vacío
-    const email = (user.email || user.name || "").toLowerCase();
-    // control de acceso equipo
+
+    // email desde Azure AD — fallback a userDetails si claims no disponible
+    const claims = principal.claims || [];
+    const emailClaim = claims.find(c => c.typ === "preferred_username" || c.typ === "email" || c.typ === "upn");
+    const email = (emailClaim?.val || principal.userDetails || "").toLowerCase();
+
+    if (!email) {
+      alert("No se pudo obtener el email del usuario autenticado.");
+      return false;
+    }
+
+    // control de acceso — solo equipo autorizado
     if (CONFIG.allowedUsers && CONFIG.allowedUsers.length > 0) {
       if (!CONFIG.allowedUsers.includes(email)) {
         document.getElementById("app").innerHTML = `
-          <div style="padding:40px;text-align:center">
-            <h2>Acceso restringido</h2>
-            <p>No perteneces al equipo autorizado</p>
+          <div style="padding:40px;text-align:center;font-family:'Segoe UI',sans-serif">
+            <div style="font-size:48px;margin-bottom:16px">🔒</div>
+            <h2 style="color:#1E293B;margin-bottom:8px">Acceso restringido</h2>
+            <p style="color:#64748B">El usuario <strong>${email}</strong> no pertenece al equipo autorizado.</p>
           </div>
         `;
         return false;
       }
     }
-    state.currentUser = user;
+
+    // ✅ usuario válido
+    state.currentUser = {
+      id: principal.userId || email,
+      name: principal.userDetails || email,
+      email: email
+    };
+
+    // ✅ admin determinado desde adminUsers
     state.isAdmin = CONFIG.adminUsers.includes(email);
     return true;
+
   } catch (e) {
     alert("Error validando usuario: " + e.message);
     return false;
