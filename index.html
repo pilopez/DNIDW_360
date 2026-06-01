@@ -241,8 +241,10 @@ async function initSecurity() {
 
     // no autenticado → redirigir a login de Microsoft
     if (!principal) {
-            return false;
-    }
+  window.location.href = "/.auth/login/aad?post_login_redirect_uri=" 
+    + encodeURIComponent(window.location.pathname);
+  return false;
+}
 
     // email desde Azure AD — fallback a userDetails si claims no disponible
     const claims = principal.claims || [];
