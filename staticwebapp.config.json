@@ -1,22 +1,8 @@
 {
   "routes": [
     {
-      "route": "/sites/*",
-      "rewrite": "https://indra365.sharepoint.com/sites/{remaining}"
-    },
-    {
       "route": "/*",
-      "allowedRoles": [
-        "anonymous"
-      ]
+      "allowedRoles": ["anonymous"]
     }
-  ],
-  "globalHeaders": {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-RequestDigest, X-HTTP-Method, IF-MATCH, Accept"
-  },
-  "mimeTypes": {
-    ".json": "application/json"
-  }
+  ]
 }
