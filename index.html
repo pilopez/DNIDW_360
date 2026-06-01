@@ -422,18 +422,24 @@ const DRIVERS_CONFIG = {
 // STATE
 // ═══════════════════════════════════════════════════════
 const state = {
-  view: "login",        // login | evalList | evalForm | done | adminDash | adminReport | adminConfig
+  view: "login",        // login | selectSubjects | evalList | evalForm | done | adminDash | adminReport | adminConfig | adminCampanas | adminConfigDrivers
   isAdmin: false,
-  currentUser: null,    // { id, name, email }
-  currentSubject: null, // { ID, Nombre, Rol, Grado }
-  scores: {},           // { driverId: { score, pick, comment } }
+  currentUser: null,
+  currentSubject: null,
+  scores: {},
   team: [],
   evaluators: [],
   responses: [],
-  adminTab: "dashboard", // dashboard | team | evaluators
+  campanas: [],
+  campanaActiva: null,  // { ID, Nombre, Mes, Anio }
+  selectedSubjects: [], // IDs seleccionados por el evaluador (F2)
+  configDrivers: {},    // { evaluadoID: { driverId: { Peso, Criterio1, Criterio2 } } }
+  adminTab: "dashboard",
   reportSubject: null,
   editingTeamItem: null,
   editingEvalItem: null,
+  editingCampana: null,
+  editingConfigSubject: null,
   formData: {},
   loading: false,
   digestValue: null
@@ -452,16 +458,13 @@ async function apiRequest(endpoint, options = {}) {
   const sep = url.includes("?") ? "&" : "?";
   const res = await fetch(`${url}${sep}code=${API.key}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
-    }
+    headers: { "Content-Type": "application/json", ...(options.headers || {}) }
   });
   if (!res.ok) throw new Error(`API Error ${res.status}: ${await res.text()}`);
   return res.json();
 }
 
-// getCurrentUser mantenida por compatibilidad — ya no se usa en login
+// getCurrentUser mantenida por compatibilidad
 async function getCurrentUser() {
   const principal = await getClientPrincipal();
   if (!principal) return null;
@@ -472,6 +475,33 @@ async function getCurrentUser() {
     name: principal.userDetails || "",
     email: (emailClaim?.val || principal.userDetails || "").toLowerCase()
   };
+}
+
+// ─── DRIVER CONFIG con overrides personalizados ───────────
+function getDriverConfig(subject) {
+  const base = DRIVERS_CONFIG[subject.Rol] || DRIVERS_CONFIG["Senior Consultant"];
+  const overrides = state.configDrivers[subject.ID] || {};
+  if (!Object.keys(overrides).length) return base;
+
+  // Merge: base + solo los campos modificados
+  const merged = {
+    weights: { ...base.weights },
+    criteria: {},
+    suggestions: base.suggestions
+  };
+  DRIVER_ORDER.forEach(d => {
+    const ov = overrides[d];
+    if (ov) {
+      if (ov.Peso !== undefined) merged.weights[d] = ov.Peso;
+      merged.criteria[d] = [
+        ov.Criterio1 !== undefined ? ov.Criterio1 : base.criteria[d][0],
+        ov.Criterio2 !== undefined ? ov.Criterio2 : base.criteria[d][1]
+      ];
+    } else {
+      merged.criteria[d] = base.criteria[d];
+    }
+  });
+  return merged;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -485,58 +515,68 @@ async function loadEvaluators() {
   state.evaluators = await apiRequest("GetEvaluadores");
 }
 
+async function loadCampanas() {
+  state.campanas = await apiRequest("GetCampanas");
+  state.campanaActiva = state.campanas.find(c => c.Activa) || null;
+}
+
 async function loadResponses(subjectId = null) {
+  const periodo = state.campanaActiva?.Nombre || state.campanas.find(c => c.Activa)?.Nombre || CONFIG.periodo;
   const params = subjectId
-    ? `GetRespuestas?periodo=${CONFIG.periodo}&evaluadoID=${subjectId}`
-    : `GetRespuestas?periodo=${CONFIG.periodo}`;
+    ? `GetRespuestas?periodo=${encodeURIComponent(periodo)}&evaluadoID=${subjectId}`
+    : `GetRespuestas?periodo=${encodeURIComponent(periodo)}`;
   state.responses = await apiRequest(params);
+}
+
+async function loadConfigDrivers(evaluadoID) {
+  const data = await apiRequest(`GetConfig?evaluadoID=${evaluadoID}`);
+  if (!state.configDrivers[evaluadoID]) state.configDrivers[evaluadoID] = {};
+  data.forEach(item => {
+    state.configDrivers[evaluadoID][item.DriverID] = {
+      Peso: item.Peso,
+      Criterio1: item.Criterio1,
+      Criterio2: item.Criterio2
+    };
+  });
 }
 
 async function createListItem(listName, itemData) {
   if (listName === CONFIG.lists.respuestas) {
-    return apiRequest("PostRespuesta", {
-      method: "POST",
-      body: JSON.stringify(itemData)
-    });
+    return apiRequest("PostRespuesta", { method: "POST", body: JSON.stringify(itemData) });
   }
-  return apiRequest(`ManageData?table=${listName}`, {
-    method: "POST",
-    body: JSON.stringify(itemData)
-  });
+  return apiRequest(`ManageData?table=${listName}`, { method: "POST", body: JSON.stringify(itemData) });
 }
 
 async function updateListItem(listName, itemId, itemData) {
-  return apiRequest(`ManageData?table=${listName}`, {
-    method: "POST",
-    body: JSON.stringify({ ...itemData, ID: itemId })
-  });
+  return apiRequest(`ManageData?table=${listName}`, { method: "POST", body: JSON.stringify({ ...itemData, ID: itemId }) });
 }
 
 async function deleteListItem(listName, itemId) {
-  return apiRequest(`ManageData?table=${listName}&id=${itemId}`, {
-    method: "DELETE"
-  });
+  return apiRequest(`ManageData?table=${listName}&id=${itemId}`, { method: "DELETE" });
+}
+
+async function deleteRespuesta(periodo, id) {
+  return apiRequest(`DeleteRespuesta?periodo=${encodeURIComponent(periodo)}&id=${id}`, { method: "DELETE" });
 }
 
 function hasSubmitted(subjectId) {
   return state.responses.some(r =>
-    r.EvaluadoID === subjectId &&
-    r.EvaluadorID === state.currentUser?.id
+    r.EvaluadoID === subjectId && r.EvaluadorID === state.currentUser?.id
   );
 }
 
 // ═══════════════════════════════════════════════════════
 // CALCULATIONS
 // ═══════════════════════════════════════════════════════
-function calcWeightedAvg(responses, role) {
+function calcWeightedAvg(responses, role, subject) {
   if (!responses.length) return null;
-  const cfg = DRIVERS_CONFIG[role];
+  const cfg = subject ? getDriverConfig(subject) : (DRIVERS_CONFIG[role] || DRIVERS_CONFIG["Senior Consultant"]);
   if (!cfg) return null;
   let total = 0;
   responses.forEach(r => {
     DRIVER_ORDER.forEach(d => {
-      const fieldName = `Score_${d.split("_").map((w,i) => i===0 ? w.charAt(0).toUpperCase()+w.slice(1) : w.charAt(0).toUpperCase()+w.slice(1)).join("")}`;
-      const score = r[fieldName];
+      const field = getFieldName(d, "Score");
+      const score = r[field];
       if (score) total += score * (cfg.weights[d] || 0);
     });
   });
@@ -605,7 +645,8 @@ function renderTopbar() {
   const bar = el("div", {className: "topbar"});
   const left = el("div", {style: {display:"flex", alignItems:"center", gap:"8px"}});
   left.appendChild(el("span", {className:"topbar-title"}, "Evaluación 360°"));
-  left.appendChild(el("span", {className:"topbar-sub"}, "DNIDW · " + CONFIG.periodo));
+  const campana = state.campanaActiva?.Nombre || CONFIG.periodo;
+  left.appendChild(el("span", {className:"topbar-sub"}, "DNIDW · " + campana));
   bar.appendChild(left);
 
   const right = el("div", {className:"topbar-right"});
@@ -614,7 +655,8 @@ function renderTopbar() {
   right.appendChild(el("span", {className: badgeClass}, badgeText));
   right.appendChild(el("button", {className:"btn-exit", onClick: () => {
     state.view = "login"; state.isAdmin = false; state.currentUser = null;
-    state.scores = {}; render();
+    state.scores = {}; state.selectedSubjects = []; state.campanaActiva = null;
+    render();
   }}, "Salir"));
   bar.appendChild(right);
   return bar;
@@ -745,9 +787,15 @@ function renderLogin() {
     if (!ok) return;
     state.loading = true; render();
     try {
+      await loadCampanas();
       await loadTeam();
+      if (!state.campanaActiva) {
+        alert("No hay ninguna campaña de evaluación activa. Contacta con el administrador.");
+        state.loading = false; render(); return;
+      }
       await loadResponses();
-      state.view = "evalList";
+      state.selectedSubjects = [];
+      state.view = "selectSubjects";
     } catch(e) {
       alert("Error al conectar con la API: " + e.message);
     }
@@ -763,6 +811,7 @@ function renderLogin() {
     }
     state.loading = true; render();
     try {
+      await loadCampanas();
       await loadTeam(); await loadEvaluators(); await loadResponses();
       state.view = "adminDash";
     } catch(e) {
@@ -784,10 +833,23 @@ function renderLogin() {
 
 function renderEvalList() {
   const cont = el("div", {className:"container"});
-  cont.appendChild(el("div", {className:"page-title"}, "Hola, " + (state.currentUser?.name?.split(" ")[0] || "")));
-  cont.appendChild(el("div", {className:"page-sub"}, "Selecciona a quién deseas evaluar. Tu identidad es anónima para el evaluado."));
+  const campana = state.campanaActiva?.Nombre || CONFIG.periodo;
+  cont.appendChild(el("div", {className:"page-title"}, "Hola, " + (state.currentUser?.name?.split("@")[0] || "")));
+  cont.appendChild(el("div", {className:"page-sub"}, `Campaña: ${campana} · Tu identidad es anónima para el evaluado.`));
 
-  state.team.forEach(member => {
+  // Filter team by selectedSubjects
+  const filtered = state.selectedSubjects.length
+    ? state.team.filter(m => state.selectedSubjects.includes(m.ID))
+    : state.team;
+
+  const backBtn = el("button", {
+    className:"btn btn-secondary btn-sm",
+    style:{marginBottom:"14px"},
+    onClick: () => { state.view = "selectSubjects"; render(); }
+  }, "← Cambiar selección");
+  cont.appendChild(backBtn);
+
+  filtered.forEach(member => {
     const submitted = hasSubmitted(member.ID);
     const item = el("div", {className: "eval-item" + (submitted ? " done" : "")});
 
@@ -801,9 +863,11 @@ function renderEvalList() {
     } else {
       const pill = el("span", {className:"pill pill-pending"}, "Evaluar →");
       item.appendChild(pill);
-      item.addEventListener("click", () => {
+      item.addEventListener("click", async () => {
         state.currentSubject = member;
         state.scores = {};
+        // Load custom driver config for this subject
+        await loadConfigDrivers(member.ID);
         state.view = "evalForm";
         render();
       });
@@ -811,12 +875,16 @@ function renderEvalList() {
     cont.appendChild(item);
   });
 
+  if (!filtered.length) {
+    cont.appendChild(el("div", {className:"empty"}, "No has seleccionado ningún compañero. Vuelve atrás para seleccionar."));
+  }
+
   return cont;
 }
 
 function renderEvalForm() {
   const subject = state.currentSubject;
-  const cfg = DRIVERS_CONFIG[subject.Rol] || DRIVERS_CONFIG["Senior Consultant"];
+  const cfg = getDriverConfig(subject);
   const cont = el("div", {className:"container"});
 
   // Back button
@@ -1042,12 +1110,13 @@ function updateSubmitBtn() {
 async function submitEvaluation() {
   state.loading = true; render();
   try {
+    const periodo = state.campanaActiva?.Nombre || CONFIG.periodo;
     const item = {
       EvaluadorID: state.currentUser.id,
       EvaluadorNombre: state.currentUser.name,
       EvaluadoID: state.currentSubject.ID,
       EvaluadoNombre: state.currentSubject.Nombre,
-      Periodo: CONFIG.periodo,
+      Periodo: periodo,
       FechaEnvio: new Date().toISOString()
     };
     DRIVER_ORDER.forEach(d => {
@@ -1058,10 +1127,7 @@ async function submitEvaluation() {
       item[`Pick_${key}`] = v.pick || "";
       item[`Comment_${key}`] = v.comment || "";
     });
-    await apiRequest("PostRespuesta", {
-      method: "POST",
-      body: JSON.stringify(item)
-    });
+    await apiRequest("PostRespuesta", { method: "POST", body: JSON.stringify(item) });
     await loadResponses();
     state.view = "done";
   } catch(e) {
@@ -1079,6 +1145,67 @@ function renderDone() {
   const btn = el("button", {className:"btn btn-primary", onClick: () => { state.view = "evalList"; render(); }}, "Evaluar a otro compañero");
   wrap.appendChild(btn);
   return wrap;
+}
+
+// ═══ SELECT SUBJECTS (F2) ═══
+function renderSelectSubjects() {
+  const cont = el("div", {className:"container"});
+  cont.appendChild(el("div", {className:"page-title"}, "¿Con quién has trabajado este semestre?"));
+  const campana = state.campanaActiva?.Nombre || CONFIG.periodo;
+  cont.appendChild(el("div", {className:"page-sub"}, `Campaña: ${campana} · Selecciona solo a los compañeros con los que hayas colaborado`));
+
+  const alert = el("div", {className:"alert alert-info", style:{marginBottom:"16px"}});
+  alert.textContent = "Solo verás en tu lista de pendientes a las personas que selecciones aquí.";
+  cont.appendChild(alert);
+
+  const grid = el("div", {style:{display:"flex", flexDirection:"column", gap:"8px", marginBottom:"24px"}});
+  state.team.forEach(m => {
+    const isSelected = state.selectedSubjects.includes(m.ID);
+    const item = el("div", {
+      style:{
+        display:"flex", alignItems:"center", gap:"14px", padding:"14px 18px",
+        background: isSelected ? "var(--indra-light)" : "var(--surface)",
+        border: `2px solid ${isSelected ? "var(--indra)" : "var(--border)"}`,
+        borderRadius:"12px", cursor:"pointer", transition:"all 0.15s"
+      },
+      onClick: () => {
+        if (isSelected) {
+          state.selectedSubjects = state.selectedSubjects.filter(id => id !== m.ID);
+        } else {
+          state.selectedSubjects = [...state.selectedSubjects, m.ID];
+        }
+        render();
+      }
+    });
+    const chk = el("div", {style:{
+      width:"22px", height:"22px", borderRadius:"6px", flexShrink:"0",
+      background: isSelected ? "var(--indra)" : "var(--border)",
+      display:"flex", alignItems:"center", justifyContent:"center",
+      color:"#fff", fontSize:"14px", fontWeight:"800"
+    }}, isSelected ? "✓" : "");
+    item.appendChild(chk);
+    const info = el("div");
+    info.appendChild(el("div", {style:{fontWeight:"700", fontSize:"14px", color:"var(--text)"}}, m.Nombre));
+    info.appendChild(el("div", {style:{fontSize:"12px", color:"var(--faint)", marginTop:"2px"}}, `${m.Rol} · Grado ${m.Grado}`));
+    item.appendChild(info);
+    grid.appendChild(item);
+  });
+  cont.appendChild(grid);
+
+  const btnCont = el("button", {
+    className:"btn btn-primary btn-full",
+    onClick: () => {
+      if (!state.selectedSubjects.length) {
+        alert("Selecciona al menos un compañero para evaluar.");
+        return;
+      }
+      state.view = "evalList";
+      render();
+    }
+  }, `Continuar con ${state.selectedSubjects.length} seleccionados →`);
+  btnCont.disabled = state.selectedSubjects.length === 0;
+  cont.appendChild(btnCont);
+  return cont;
 }
 
 // ═══ ADMIN DASHBOARD ═══
@@ -1104,7 +1231,7 @@ function renderAdminDash() {
 
   state.team.forEach(member => {
     const memberResponses = state.responses.filter(r => r.EvaluadoID === member.ID);
-    const avg = calcWeightedAvg(memberResponses, member.Rol);
+    const avg = calcWeightedAvg(memberResponses, member.Rol, member);
     const avgNum = avg ? parseFloat(avg) : 0;
     const pct = totalEvals > 0 ? memberResponses.length / totalEvals : 0;
     const card = el("div", {className:"subject-card"});
@@ -1160,7 +1287,7 @@ function renderAdminDash() {
 // ═══ ADMIN REPORT ═══
 function renderAdminReport() {
   const subject = state.reportSubject;
-  const cfg = DRIVERS_CONFIG[subject.Rol] || DRIVERS_CONFIG["Senior Consultant"];
+  const cfg = getDriverConfig(subject);
   const responses = state.responses.filter(r => r.EvaluadoID === subject.ID);
   const avg = calcWeightedAvg(responses, subject.Rol);
   const avgNum = avg ? parseFloat(avg) : 0;
@@ -1289,12 +1416,36 @@ function renderAdminReport() {
   responses.forEach(r => {
     const evaluator = state.evaluators.find(e => e.ID === r.EvaluadorID);
     const rRow = el("div", {className:"response-row"});
-    const evalName = el("div", {className:"response-evaluator"});
+
+    const evalHeader = el("div", {style:{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"8px"}});
+    const evalName = el("div", {className:"response-evaluator", style:{margin:"0"}});
     evalName.textContent = evaluator?.Nombre || r.EvaluadorNombre || `Evaluador ${r.EvaluadorID}`;
     const dateEl = el("span", {className:"response-date"});
     dateEl.textContent = r.FechaEnvio ? new Date(r.FechaEnvio).toLocaleString("es-ES") : "";
     evalName.appendChild(dateEl);
-    rRow.appendChild(evalName);
+    evalHeader.appendChild(evalName);
+
+    // Delete button (F3) — only for evaluations with score 4 or 5
+    const maxScore = Math.max(...DRIVER_ORDER.map(d => {
+      const map = { capacidad_analitica:"CapAnalit", excelencia_entrega:"ExcEntrega", trabajo_equipo:"TrabEquipo", gestion:"Gestion", interlocucion:"Interlocucion", conocimiento_tecnico:"ConocTecnico" };
+      return r[`Score_${map[d]}`] || 0;
+    }));
+    if (maxScore >= 4) {
+      const delBtn = el("button", {className:"btn btn-danger btn-sm", onClick: async () => {
+        if (!confirm(`¿Eliminar la evaluación de ${evaluator?.Nombre || r.EvaluadorNombre}? El evaluador podrá rehacerla.`)) return;
+        state.loading = true; render();
+        try {
+          await deleteRespuesta(r.Periodo, r.ID);
+          await loadResponses(subject.ID);
+          state.reportSubject = subject;
+          state.view = "adminReport";
+        } catch(e) { alert("Error: " + e.message); }
+        state.loading = false; render();
+      }}, "🗑 Eliminar");
+      evalHeader.appendChild(delBtn);
+    }
+    rRow.appendChild(evalHeader);
+
     DRIVER_ORDER.forEach(d => {
       const map = { capacidad_analitica:"CapAnalit", excelencia_entrega:"ExcEntrega", trabajo_equipo:"TrabEquipo", gestion:"Gestion", interlocucion:"Interlocucion", conocimiento_tecnico:"ConocTecnico" };
       const key = map[d];
@@ -1471,12 +1622,323 @@ function renderAdminConfig() {
 // ═══════════════════════════════════════════════════════
 // MAIN RENDER
 // ═══════════════════════════════════════════════════════
+// ═══ ADMIN CAMPAÑAS (F1) ═══
+function renderAdminCampanas() {
+  const cont = el("div", {className:"container"});
+  cont.appendChild(el("div", {className:"page-title"}, "Gestión de campañas"));
+  cont.appendChild(el("div", {className:"page-sub"}, "Solo puede haber una campaña activa a la vez. La campaña activa recibe las evaluaciones."));
+
+  const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+  // Form nueva campaña
+  const formCard = el("div", {className:"card card-blue", style:{marginBottom:"20px"}});
+  formCard.appendChild(el("div", {className:"section-label"}, "Nueva campaña"));
+  const formRow = el("div", {className:"form-row"});
+
+  const mesSel = el("select");
+  mesSel.appendChild(el("option", {value:""}, "— Mes —"));
+  MESES.forEach((m,i) => mesSel.appendChild(el("option", {value: String(i+1)}, m)));
+
+  const anioInput = el("input", {type:"text", placeholder: `Año (ej. ${new Date().getFullYear()})`});
+  anioInput.style.textAlign = "center";
+
+  formRow.appendChild(el("div", {className:"form-group"}, mesSel));
+  formRow.appendChild(el("div", {className:"form-group"}, anioInput));
+  formCard.appendChild(formRow);
+
+  const activaRow = el("div", {className:"checkbox-row", style:{marginBottom:"12px"}});
+  const activaChk = el("input", {type:"checkbox"});
+  activaChk.checked = true;
+  activaRow.appendChild(activaChk);
+  activaRow.appendChild(document.createTextNode("Activar esta campaña inmediatamente"));
+  formCard.appendChild(activaRow);
+
+  formCard.appendChild(el("button", {className:"btn btn-primary btn-sm", onClick: async () => {
+    const mes = mesSel.value;
+    const anio = anioInput.value.trim();
+    if (!mes || !anio || anio.length !== 4) { alert("Selecciona mes y año (4 dígitos)."); return; }
+    state.loading = true; render();
+    try {
+      await apiRequest("SaveCampana", {
+        method: "POST",
+        body: JSON.stringify({ Mes: parseInt(mes), Anio: parseInt(anio), Activa: activaChk.checked })
+      });
+      await loadCampanas();
+    } catch(e) { alert("Error: " + e.message); }
+    state.loading = false; render();
+  }}, "Crear campaña"));
+  cont.appendChild(formCard);
+
+  // Lista de campañas
+  cont.appendChild(el("div", {className:"section-label", style:{marginTop:"8px"}}, "Historial de campañas"));
+  if (!state.campanas.length) {
+    cont.appendChild(el("div", {className:"empty"}, "No hay campañas creadas aún."));
+  }
+  state.campanas.forEach(c => {
+    const row = el("div", {style:{
+      display:"flex", alignItems:"center", gap:"10px", padding:"12px 16px",
+      background:"var(--surface)", border:"1px solid var(--border)",
+      borderRadius:"10px", marginBottom:"6px"
+    }});
+    const info = el("div", {style:{flex:"1"}});
+    info.appendChild(el("div", {style:{fontWeight:"700", fontSize:"14px", color:"var(--text)"}}, c.Nombre));
+    info.appendChild(el("div", {style:{fontSize:"12px", color:"var(--faint)"}}, c.FechaCreacion ? new Date(c.FechaCreacion).toLocaleDateString("es-ES") : ""));
+    row.appendChild(info);
+
+    const pill = el("span", {className:"pill"});
+    pill.style.background = c.Activa ? "var(--green-bg)" : "#F1F5F9";
+    pill.style.color = c.Activa ? "var(--green)" : "var(--faint)";
+    pill.textContent = c.Activa ? "● Activa" : "Inactiva";
+    row.appendChild(pill);
+
+    if (!c.Activa) {
+      row.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: async () => {
+        state.loading = true; render();
+        try {
+          await apiRequest("SaveCampana", { method:"POST", body: JSON.stringify({ ID: c.ID, Mes: c.Mes, Anio: c.Anio, Activa: true }) });
+          await loadCampanas();
+        } catch(e) { alert("Error: " + e.message); }
+        state.loading = false; render();
+      }}, "Activar"));
+    }
+
+    // Ver resumen histórico
+    row.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: async () => {
+      state.loading = true; render();
+      try {
+        const params = `GetRespuestas?periodo=${encodeURIComponent(c.Nombre)}`;
+        const respsCampana = await apiRequest(params);
+        renderResumenCampana(c, respsCampana);
+      } catch(e) { alert("Error: " + e.message); }
+      state.loading = false; render();
+    }}, "Ver resumen"));
+
+    cont.appendChild(row);
+  });
+  return cont;
+}
+
+// ─── Resumen ejecutivo de campaña ─────────────────────────
+function renderResumenCampana(campana, responses) {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+
+  const topbar = renderTopbar();
+  if (topbar) app.appendChild(topbar);
+
+  const cont = el("div", {className:"container"});
+  cont.appendChild(el("button", {className:"btn btn-secondary btn-sm", style:{marginBottom:"20px"}, onClick: () => { state.view = "adminCampanas"; render(); }}, "← Volver a campañas"));
+  cont.appendChild(el("div", {className:"page-title"}, `Resumen ejecutivo · ${campana.Nombre}`));
+  cont.appendChild(el("div", {className:"page-sub"}, `${responses.length} evaluaciones recibidas`));
+
+  if (!responses.length) {
+    cont.appendChild(el("div", {className:"empty"}, "Sin evaluaciones en esta campaña."));
+    app.appendChild(cont);
+    return;
+  }
+
+  // Stats globales
+  const statsGrid = el("div", {className:"stats-grid", style:{marginBottom:"20px"}});
+  const evaluados = [...new Set(responses.map(r => r.EvaluadoID))];
+  const evaluadores = [...new Set(responses.map(r => r.EvaluadorID))];
+  [
+    {n: evaluados.length, l: "Evaluados"},
+    {n: evaluadores.length, l: "Evaluadores"},
+    {n: responses.length, l: "Evaluaciones totales"}
+  ].forEach(({n,l}) => {
+    const sc = el("div", {className:"stat-card"});
+    sc.appendChild(el("div", {className:"stat-number"}, String(n)));
+    sc.appendChild(el("div", {className:"stat-label"}, l));
+    statsGrid.appendChild(sc);
+  });
+  cont.appendChild(statsGrid);
+
+  // Ranking de evaluados
+  const rankCard = el("div", {className:"card", style:{marginBottom:"16px"}});
+  rankCard.appendChild(el("div", {className:"section-label"}, "Ranking del equipo"));
+  const ranking = evaluados.map(id => {
+    const member = state.team.find(m => m.ID === id);
+    const resps = responses.filter(r => r.EvaluadoID === id);
+    const avg = calcWeightedAvg(resps, member?.Rol, member);
+    return { id, nombre: member?.Nombre || id, rol: member?.Rol || "", avg: avg ? parseFloat(avg) : 0, count: resps.length };
+  }).sort((a,b) => b.avg - a.avg);
+
+  ranking.forEach((item, idx) => {
+    const row = el("div", {style:{display:"flex", alignItems:"center", gap:"12px", padding:"10px 0", borderBottom:"1px solid var(--border)"}});
+    const num = el("div", {style:{width:"28px", height:"28px", borderRadius:"50%", background: idx === 0 ? "#FCD34D" : idx === 1 ? "#D1D5DB" : idx === 2 ? "#D97706" : "var(--indra-light)", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:"800", fontSize:"13px", color: idx < 3 ? "#1E293B" : "var(--indra)", flexShrink:"0"}}, String(idx+1));
+    row.appendChild(num);
+    const info = el("div", {style:{flex:"1"}});
+    info.appendChild(el("div", {style:{fontWeight:"700", fontSize:"13px", color:"var(--text)"}}, item.nombre));
+    info.appendChild(el("div", {style:{fontSize:"11px", color:"var(--faint)"}}, `${item.rol} · ${item.count} evaluaciones`));
+    row.appendChild(info);
+    const scoreEl = el("div", {style:{fontWeight:"900", fontSize:"18px", color: getScoreColor(item.avg.toString())}}, item.avg > 0 ? item.avg.toFixed(2) : "–");
+    row.appendChild(scoreEl);
+    rankCard.appendChild(row);
+  });
+  cont.appendChild(rankCard);
+
+  // Drivers medios del equipo
+  const driversCard = el("div", {className:"card", style:{marginBottom:"16px"}});
+  driversCard.appendChild(el("div", {className:"section-label"}, "Media de drivers del equipo"));
+  DRIVER_ORDER.forEach(d => {
+    const avg = calcDriverAvg(responses, d);
+    const avgNum = avg ? parseFloat(avg) : 0;
+    const row = el("div", {style:{display:"flex", alignItems:"center", gap:"12px", padding:"8px 0", borderBottom:"1px solid var(--border)"}});
+    row.appendChild(el("span", {style:{fontSize:"16px", width:"22px"}}, DRIVER_ICONS[d]));
+    row.appendChild(el("div", {style:{flex:"1", fontSize:"13px", fontWeight:"600", color:"var(--text)"}}, DRIVER_NAMES[d]));
+    const barWrap = el("div", {className:"driver-bar-wrap"});
+    barWrap.appendChild(renderProgressBar(avgNum/5, avg ? getScoreColor(avg) : undefined));
+    row.appendChild(barWrap);
+    const scoreEl = el("div", {style:{width:"36px", textAlign:"center", fontWeight:"800", fontSize:"14px", color: avg ? getScoreColor(avg) : "var(--faint)"}}, avg || "–");
+    row.appendChild(scoreEl);
+    driversCard.appendChild(row);
+  });
+  cont.appendChild(driversCard);
+
+  app.appendChild(cont);
+}
+
+// ═══ ADMIN CONFIG DRIVERS (F4) ═══
+async function renderAdminConfigDrivers() {
+  const cont = el("div", {className:"container"});
+  cont.appendChild(el("div", {className:"page-title"}, "Configuración de drivers"));
+  cont.appendChild(el("div", {className:"page-sub"}, "Personaliza pesos y criterios por evaluado. Los valores base son los del rol."));
+
+  if (state.editingConfigSubject) {
+    const subject = state.editingConfigSubject;
+    await loadConfigDrivers(subject.ID);
+    const cfg = getDriverConfig(subject);
+    const base = DRIVERS_CONFIG[subject.Rol] || DRIVERS_CONFIG["Senior Consultant"];
+
+    const formCard = el("div", {className:"card card-blue", style:{marginBottom:"16px"}});
+    formCard.appendChild(el("div", {style:{fontWeight:"800", fontSize:"16px", color:"var(--indra)", marginBottom:"4px"}}, subject.Nombre));
+    formCard.appendChild(el("div", {style:{fontSize:"13px", color:"var(--muted)", marginBottom:"16px"}}, `${subject.Rol} · Grado ${subject.Grado}`));
+
+    const localValues = {};
+    DRIVER_ORDER.forEach(d => {
+      const ov = state.configDrivers[subject.ID]?.[d] || {};
+      localValues[d] = {
+        peso: ov.Peso !== undefined ? ov.Peso : base.weights[d],
+        c1: ov.Criterio1 !== undefined ? ov.Criterio1 : base.criteria[d][0],
+        c2: ov.Criterio2 !== undefined ? ov.Criterio2 : base.criteria[d][1]
+      };
+    });
+
+    DRIVER_ORDER.forEach(d => {
+      const dCard = el("div", {style:{background:"var(--surface)", border:"1px solid var(--border)", borderRadius:"10px", padding:"14px 16px", marginBottom:"10px"}});
+
+      const dHeader = el("div", {style:{display:"flex", gap:"8px", alignItems:"center", marginBottom:"10px"}});
+      dHeader.appendChild(el("span", {style:{fontSize:"18px"}}, DRIVER_ICONS[d]));
+      dHeader.appendChild(el("div", {style:{fontWeight:"700", fontSize:"14px", color:"var(--text)"}}, DRIVER_NAMES[d]));
+      dCard.appendChild(dHeader);
+
+      // Peso
+      const pesoRow = el("div", {style:{display:"flex", alignItems:"center", gap:"10px", marginBottom:"8px"}});
+      pesoRow.appendChild(el("label", {style:{fontSize:"12px", fontWeight:"600", color:"var(--muted)", width:"60px", flexShrink:"0"}}, "Peso %"));
+      const pesoInput = el("input", {type:"number", min:"0", max:"100", step:"1"});
+      pesoInput.value = Math.round(localValues[d].peso * 100);
+      pesoInput.style.cssText = "width:80px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);font-size:13px;font-family:inherit;";
+      pesoInput.addEventListener("input", e => { localValues[d].peso = parseFloat(e.target.value) / 100; });
+      pesoRow.appendChild(pesoInput);
+
+      const isModified = state.configDrivers[subject.ID]?.[d] !== undefined;
+      if (isModified) {
+        const resetBtn = el("button", {className:"btn btn-secondary btn-sm", onClick: async () => {
+          state.loading = true; render();
+          try {
+            await apiRequest(`SaveConfig?evaluadoID=${subject.ID}&driverID=${d}`, { method: "DELETE" });
+            delete state.configDrivers[subject.ID][d];
+            state.editingConfigSubject = subject;
+          } catch(e) { alert("Error: " + e.message); }
+          state.loading = false;
+          const c = await renderAdminConfigDrivers();
+          document.getElementById("app").lastChild?.replaceWith?.(c);
+        }}, "↺ Reset");
+        pesoRow.appendChild(resetBtn);
+      }
+      dCard.appendChild(pesoRow);
+
+      // Criterio 1
+      const c1 = el("input", {type:"text", placeholder:"Criterio 1"});
+      c1.value = localValues[d].c1;
+      c1.style.cssText = "width:100%;padding:7px 10px;border-radius:6px;border:1px solid var(--border);font-size:12px;font-family:inherit;margin-bottom:6px;box-sizing:border-box;";
+      c1.addEventListener("input", e => { localValues[d].c1 = e.target.value; });
+      dCard.appendChild(c1);
+
+      // Criterio 2
+      const c2 = el("input", {type:"text", placeholder:"Criterio 2"});
+      c2.value = localValues[d].c2;
+      c2.style.cssText = "width:100%;padding:7px 10px;border-radius:6px;border:1px solid var(--border);font-size:12px;font-family:inherit;box-sizing:border-box;";
+      c2.addEventListener("input", e => { localValues[d].c2 = e.target.value; });
+      dCard.appendChild(c2);
+
+      formCard.appendChild(dCard);
+    });
+
+    // Validate total peso = 100%
+    const btnRow = el("div", {style:{display:"flex", gap:"8px", marginTop:"12px"}});
+    btnRow.appendChild(el("button", {className:"btn btn-primary btn-sm", onClick: async () => {
+      const totalPeso = DRIVER_ORDER.reduce((s,d) => s + localValues[d].peso, 0);
+      if (Math.abs(totalPeso - 1) > 0.02) {
+        alert(`Los pesos deben sumar 100%. Actualmente suman ${Math.round(totalPeso*100)}%.`);
+        return;
+      }
+      state.loading = true; render();
+      try {
+        for (const d of DRIVER_ORDER) {
+          const baseW = base.weights[d];
+          const basC1 = base.criteria[d][0];
+          const basC2 = base.criteria[d][1];
+          const lv = localValues[d];
+          const hasChange = Math.abs(lv.peso - baseW) > 0.001 || lv.c1 !== basC1 || lv.c2 !== basC2;
+          if (hasChange) {
+            await apiRequest("SaveConfig", { method:"POST", body: JSON.stringify({ EvaluadoID: subject.ID, DriverID: d, Peso: lv.peso, Criterio1: lv.c1, Criterio2: lv.c2 }) });
+          }
+        }
+        await loadConfigDrivers(subject.ID);
+        state.editingConfigSubject = null;
+        alert("Configuración guardada correctamente.");
+      } catch(e) { alert("Error: " + e.message); }
+      state.loading = false; render();
+    }}, "Guardar configuración"));
+    btnRow.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: () => { state.editingConfigSubject = null; render(); }}, "Cancelar"));
+    formCard.appendChild(btnRow);
+    cont.appendChild(formCard);
+    return cont;
+  }
+
+  // List of team members
+  cont.appendChild(el("div", {className:"section-label", style:{marginTop:"8px"}}, "Selecciona un evaluado para configurar sus drivers"));
+  state.team.forEach(m => {
+    const hasCustom = state.configDrivers[m.ID] && Object.keys(state.configDrivers[m.ID]).length > 0;
+    const row = el("div", {style:{display:"flex", alignItems:"center", gap:"10px", padding:"12px 16px", background:"var(--surface)", border:"1px solid var(--border)", borderRadius:"10px", marginBottom:"6px", cursor:"pointer"}, onClick: async () => {
+      state.editingConfigSubject = m;
+      state.loading = true; render();
+      await loadConfigDrivers(m.ID);
+      state.loading = false; render();
+    }});
+    const info = el("div", {style:{flex:"1"}});
+    info.appendChild(el("div", {style:{fontWeight:"700", fontSize:"14px", color:"var(--text)"}}, m.Nombre));
+    info.appendChild(el("div", {style:{fontSize:"12px", color:"var(--faint)"}}, `${m.Rol} · Grado ${m.Grado}`));
+    row.appendChild(info);
+    if (hasCustom) {
+      const pill = el("span", {className:"pill"});
+      pill.style.background = "var(--yellow-bg)"; pill.style.color = "var(--yellow)";
+      pill.textContent = "⚙ Personalizado";
+      row.appendChild(pill);
+    }
+    row.appendChild(el("span", {style:{color:"var(--indra)", fontSize:"14px"}}, "→"));
+    cont.appendChild(row);
+  });
+  return cont;
+}
+
 function render() {
   const app = document.getElementById("app");
   app.innerHTML = "";
 
   if (state.loading) {
-    const loadingEl = el("div", {className:"loading"}, "⟳ Conectando con SharePoint...");
+    const loadingEl = el("div", {className:"loading"}, "⟳ Cargando...");
     app.appendChild(loadingEl);
     return;
   }
@@ -1485,32 +1947,43 @@ function render() {
   if (topbar) app.appendChild(topbar);
 
   // Admin tabs
-  if (state.isAdmin && state.view !== "adminReport" && ["adminDash","adminConfig"].includes(state.view)) {
-    const tabs = el("div", {className:"tabs"});
-    [
-      {id:"adminDash", label:"📊 Resultados"},
-      {id:"adminConfig", label:"👥 Equipo y Evaluadores"}
-    ].forEach(tab => {
-      const btn = el("button", {className:"tab-btn" + (state.view === tab.id ? " active" : ""), onClick: async () => {
-        state.view = tab.id;
-        if (tab.id === "adminDash") await loadResponses();
-        if (tab.id === "adminConfig") { await loadTeam(); await loadEvaluators(); }
-        render();
-      }}, tab.label);
-      tabs.appendChild(btn);
-    });
-    app.appendChild(tabs);
+  if (state.isAdmin && !["adminReport","login"].includes(state.view)) {
+    const adminViews = ["adminDash","adminConfig","adminCampanas","adminConfigDrivers"];
+    if (adminViews.includes(state.view)) {
+      const tabs = el("div", {className:"tabs"});
+      [
+        {id:"adminDash", label:"📊 Resultados"},
+        {id:"adminCampanas", label:"📅 Campañas"},
+        {id:"adminConfigDrivers", label:"⚙️ Drivers"},
+        {id:"adminConfig", label:"👥 Equipo y Evaluadores"}
+      ].forEach(tab => {
+        const btn = el("button", {className:"tab-btn" + (state.view === tab.id ? " active" : ""), onClick: async () => {
+          state.view = tab.id;
+          if (tab.id === "adminDash") await loadResponses();
+          if (tab.id === "adminConfig") { await loadTeam(); await loadEvaluators(); }
+          if (tab.id === "adminCampanas") await loadCampanas();
+          render();
+        }}, tab.label);
+        tabs.appendChild(btn);
+      });
+      app.appendChild(tabs);
+    }
   }
 
   let content;
   switch(state.view) {
     case "login": content = renderLogin(); break;
+    case "selectSubjects": content = renderSelectSubjects(); break;
     case "evalList": content = renderEvalList(); break;
     case "evalForm": content = renderEvalForm(); break;
     case "done": content = renderDone(); break;
     case "adminDash": content = renderAdminDash(); break;
     case "adminReport": content = renderAdminReport(); break;
     case "adminConfig": content = renderAdminConfig(); break;
+    case "adminCampanas": content = renderAdminCampanas(); break;
+    case "adminConfigDrivers":
+      renderAdminConfigDrivers().then(c => { if (c) app.appendChild(c); });
+      return;
     default: content = renderLogin();
   }
 
