@@ -241,10 +241,9 @@ async function initSecurity() {
 
     // no autenticado → redirigir a login de Microsoft
     if (!principal) {
-  window.location.href = "/.auth/login/aad?post_login_redirect_uri=" 
-    + encodeURIComponent(window.location.pathname);
-  return false;
-}
+      window.location.href = "/.auth/login/aad?post_login_redirect_uri=" + encodeURIComponent(window.location.href);
+      return false;
+    }
 
     // email desde Azure AD — fallback a userDetails si claims no disponible
     const claims = principal.claims || [];
@@ -454,97 +453,89 @@ const state = {
 };
 
 // ═══════════════════════════════════════════════════════
-// SHAREPOINT API
+// AZURE FUNCTIONS API
 // ═══════════════════════════════════════════════════════
-async function spRequest(url, options = {}) {
-  const res = await fetch(`${CONFIG.siteUrl}/_api/${url}`, {
+const API = {
+  base: "https://func-eval360-dnidw-h2fydwavajdmhuas.westeurope-01.azurewebsites.net/api",
+  key: "9HRtJum9M8kfOeSV-Fz26u6Nx4ecUxMExeTmpVxYP0pmAzFumUf-UA=="
+};
+
+async function apiRequest(endpoint, options = {}) {
+  const url = `${API.base}/${endpoint}`;
+  const sep = url.includes("?") ? "&" : "?";
+  const res = await fetch(`${url}${sep}code=${API.key}`, {
     ...options,
     headers: {
-      "Accept": "application/json;odata=verbose",
-      "Content-Type": "application/json;odata=verbose",
+      "Content-Type": "application/json",
       ...(options.headers || {})
-    },
-    credentials: "include"
+    }
   });
-  if (!res.ok) throw new Error(`SP Error ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`API Error ${res.status}: ${await res.text()}`);
   return res.json();
 }
 
-async function getDigest() {
-  if (state.digestValue) return state.digestValue;
-  const res = await fetch(`${CONFIG.siteUrl}/_api/contextinfo`, {
-    method: "POST",
-    headers: { "Accept": "application/json;odata=verbose" },
-    credentials: "include"
-  });
-  const data = await res.json();
-  state.digestValue = data.d.GetContextWebInformation.FormDigestValue;
-  setTimeout(() => { state.digestValue = null; }, 1500000); // 25 min expiry
-  return state.digestValue;
-}
-
-async function getListItems(listName, filter = "") {
-  const url = `web/lists/getbytitle('${listName}')/items${filter ? "?$filter=" + filter : ""}`;
-  const data = await spRequest(url);
-  return data.d.results;
-}
-
-async function createListItem(listName, itemData) {
-  const digest = await getDigest();
-  const metadata = { "__metadata": { "type": `SP.Data.${listName}ListItem` } };
-  return spRequest(`web/lists/getbytitle('${listName}')/items`, {
-    method: "POST",
-    headers: { "X-RequestDigest": digest },
-    body: JSON.stringify({ ...metadata, ...itemData })
-  });
-}
-
-async function updateListItem(listName, itemId, itemData) {
-  const digest = await getDigest();
-  return spRequest(`web/lists/getbytitle('${listName}')/items(${itemId})`, {
-    method: "POST",
-    headers: {
-      "X-RequestDigest": digest,
-      "X-HTTP-Method": "MERGE",
-      "IF-MATCH": "*"
-    },
-    body: JSON.stringify({ "__metadata": { "type": `SP.Data.${listName}ListItem` }, ...itemData })
-  });
-}
-
-async function deleteListItem(listName, itemId) {
-  const digest = await getDigest();
-  return spRequest(`web/lists/getbytitle('${listName}')/items(${itemId})`, {
-    method: "POST",
-    headers: { "X-RequestDigest": digest, "X-HTTP-Method": "DELETE", "IF-MATCH": "*" }
-  });
-}
-
+// getCurrentUser mantenida por compatibilidad — ya no se usa en login
 async function getCurrentUser() {
-  const data = await spRequest("web/currentuser");
-  return { id: data.d.Id, name: data.d.Title, email: data.d.Email };
+  const principal = await getClientPrincipal();
+  if (!principal) return null;
+  const claims = principal.claims || [];
+  const emailClaim = claims.find(c => c.typ === "preferred_username" || c.typ === "email");
+  return {
+    id: principal.userId || "",
+    name: principal.userDetails || "",
+    email: (emailClaim?.val || principal.userDetails || "").toLowerCase()
+  };
 }
 
 // ═══════════════════════════════════════════════════════
 // LOAD DATA
 // ═══════════════════════════════════════════════════════
 async function loadTeam() {
-  state.team = await getListItems(CONFIG.lists.equipo, "Activo eq 1");
+  state.team = await apiRequest("GetEquipo");
 }
 
 async function loadEvaluators() {
-  state.evaluators = await getListItems(CONFIG.lists.evaluadores, "Activo eq 1");
+  state.evaluators = await apiRequest("GetEvaluadores");
 }
 
 async function loadResponses(subjectId = null) {
-  const filter = subjectId
-    ? `EvaluadoID eq ${subjectId} and Periodo eq '${CONFIG.periodo}'`
-    : `Periodo eq '${CONFIG.periodo}'`;
-  state.responses = await getListItems(CONFIG.lists.respuestas, filter);
+  const params = subjectId
+    ? `GetRespuestas?periodo=${CONFIG.periodo}&evaluadoID=${subjectId}`
+    : `GetRespuestas?periodo=${CONFIG.periodo}`;
+  state.responses = await apiRequest(params);
+}
+
+async function createListItem(listName, itemData) {
+  if (listName === CONFIG.lists.respuestas) {
+    return apiRequest("PostRespuesta", {
+      method: "POST",
+      body: JSON.stringify(itemData)
+    });
+  }
+  return apiRequest(`ManageData?table=${listName}`, {
+    method: "POST",
+    body: JSON.stringify(itemData)
+  });
+}
+
+async function updateListItem(listName, itemId, itemData) {
+  return apiRequest(`ManageData?table=${listName}`, {
+    method: "POST",
+    body: JSON.stringify({ ...itemData, ID: itemId })
+  });
+}
+
+async function deleteListItem(listName, itemId) {
+  return apiRequest(`ManageData?table=${listName}&id=${itemId}`, {
+    method: "DELETE"
+  });
 }
 
 function hasSubmitted(subjectId) {
-  return state.responses.some(r => r.EvaluadoID === subjectId && r.EvaluadorID === state.currentUser?.id);
+  return state.responses.some(r =>
+    r.EvaluadoID === subjectId &&
+    r.EvaluadorID === state.currentUser?.id
+  );
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1055,7 +1046,10 @@ async function submitEvaluation() {
       item[`Pick_${key}`] = v.pick || "";
       item[`Comment_${key}`] = v.comment || "";
     });
-    await createListItem(CONFIG.lists.respuestas, item);
+    await apiRequest("PostRespuesta", {
+      method: "POST",
+      body: JSON.stringify(item)
+    });
     await loadResponses();
     state.view = "done";
   } catch(e) {
