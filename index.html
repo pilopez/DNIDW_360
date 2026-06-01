@@ -454,7 +454,9 @@ const state = {
   editingConfigSubject: null,
   formData: {},
   loading: false,
-  digestValue: null
+  digestValue: null,
+  loginEmail: null,
+  loginRole: null
 };
 
 // ═══════════════════════════════════════════════════════
@@ -690,7 +692,7 @@ function renderTopbar() {
   right.appendChild(el("span", {className: badgeClass}, badgeText));
   right.appendChild(el("button", {className:"btn-exit", onClick: () => {
     state.view = "login"; state.isAdmin = false; state.currentUser = null;
-    state.scores = {}; state.selectedSubjects = []; state.campanaActiva = null;
+    state.scores = {}; state.selectedSubjects = []; state.campanaActiva = null; state.loginEmail = null; state.loginRole = null;
     render();
   }}, "Salir"));
   bar.appendChild(right);
@@ -795,89 +797,185 @@ function renderLogin() {
   wrap.appendChild(el("div", {className:"login-title"}, "Evaluación 360°"));
   wrap.appendChild(el("div", {className:"login-desc"}, "Sistema de evaluación continua del equipo.\nAnónimo para el evaluado. Transparente para el administrador."));
 
-  // Email input
+  // ── STEP 1: Email input ──────────────────────────────
+  const step1 = el("div", {id:"login-step1"});
+
   const emailWrap = el("div", {style:{marginBottom:"16px"}});
   const emailLabel = el("label", {style:{display:"block", fontSize:"13px", fontWeight:"600", color:"var(--muted)", marginBottom:"6px"}}, "Tu email corporativo");
   const emailInput = el("input", {
-    type:"email",
-    placeholder:"nombre@minsait.com",
-    style:{
-      width:"100%", padding:"12px 14px", borderRadius:"10px",
-      border:"1px solid var(--border)", fontSize:"14px",
-      fontFamily:"inherit", color:"var(--text)", outline:"none",
-      boxSizing:"border-box"
-    }
-  });
-  emailInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") btnEval.click();
+    type:"email", placeholder:"nombre@minsait.com",
+    style:{width:"100%", padding:"12px 14px", borderRadius:"10px", border:"1px solid var(--border)", fontSize:"14px", fontFamily:"inherit", color:"var(--text)", outline:"none", boxSizing:"border-box"}
   });
   emailWrap.appendChild(emailLabel);
   emailWrap.appendChild(emailInput);
-  wrap.appendChild(emailWrap);
+  step1.appendChild(emailWrap);
 
   const btns = el("div", {className:"login-btns"});
 
-  const btnEval = el("button", {className:"btn btn-primary btn-full", onClick: async () => {
-    state.loading = true; render();
-    try {
-      await loadAdmins();
-      await loadTeam(); // cargar equipo ANTES de initSecurity para verificar evaluadores
-    } catch(e) {}
-    state.loading = false;
-    const ok = initSecurity(emailInput.value);
-    if (!ok) return;
-    state.loading = true; render();
-    try {
-      await loadCampanas();
-      if (!state.campanaActiva) {
-        alert("No hay ninguna campaña de evaluación activa. Contacta con el administrador.");
-        state.loading = false; render(); return;
-      }
-      await loadEvaluators();
-      await loadResponses();
-      state.selectedSubjects = [];
-      state.view = "selectSubjects";
-    } catch(e) {
-      alert("Error al conectar con la API: " + e.message);
-    }
-    state.loading = false; render();
-  }}, "Soy evaluador — Dar feedback");
+  // Helper: send code and show step2
+  const sendCodeAndContinue = async (role) => {
+    const email = emailInput.value.trim().toLowerCase();
+    if (!email || !email.includes("@")) { alert("Introduce un email válido."); return; }
 
-  const btnAdmin = el("button", {className:"btn btn-secondary btn-full", onClick: async () => {
+    // Load team+admins first to validate access
     state.loading = true; render();
     try {
       await loadAdmins();
-      await loadTeam(); // cargar equipo ANTES de initSecurity
+      await loadTeam();
     } catch(e) {}
     state.loading = false;
-    const ok = initSecurity(emailInput.value);
-    if (!ok) return;
-    if (!state.isAdmin) {
+
+    // Check access before sending code
+    const isAdminUser = CONFIG.adminUsers.includes(email) || state.admins.includes(email);
+    const isTeamEvaluator = state.team.some(m => m.EvaluaTambien === true && (m.Email || "").toLowerCase() === email);
+    const isAllowed = isAdminUser || isTeamEvaluator || (CONFIG.allowedUsers && CONFIG.allowedUsers.includes(email));
+
+    if (!isAllowed) {
+      document.getElementById("app").innerHTML = `
+        <div style="padding:60px 24px;text-align:center;font-family:'Segoe UI',sans-serif">
+          <div style="font-size:48px;margin-bottom:16px">🔒</div>
+          <h2 style="color:#1E293B;margin-bottom:8px">Acceso restringido</h2>
+          <p style="color:#64748B">El usuario <strong>${email}</strong> no pertenece al equipo autorizado.</p>
+          <button onclick="location.reload()" style="margin-top:20px;padding:10px 24px;background:#003DA5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">Volver</button>
+        </div>
+      `;
+      return;
+    }
+
+    if (role === "admin" && !isAdminUser) {
       alert("Acceso restringido al administrador.");
       return;
     }
+
+    // Send verification code
     state.loading = true; render();
     try {
-      await loadCampanas();
-      await loadEvaluators();
-      await loadResponses();
-      state.view = "adminDash";
+      const res = await apiRequest("SendVerificationCode", {
+        method: "POST",
+        body: JSON.stringify({ email })
+      });
+      state.loading = false;
+      // Show step 2
+      state.loginEmail = email;
+      state.loginRole = role;
+      renderLoginStep2(email, role);
     } catch(e) {
-      alert("Error al conectar con la API: " + e.message);
+      state.loading = false;
+      alert("Error al enviar el código: " + e.message);
+      render();
     }
-    state.loading = false; render();
-  }}, "Soy administrador — Ver resultados");
+  };
 
-  btns.appendChild(btnEval); btns.appendChild(btnAdmin);
-  wrap.appendChild(btns);
+  const btnEval = el("button", {className:"btn btn-primary btn-full", onClick: () => sendCodeAndContinue("eval")}, "Soy evaluador — Dar feedback");
+  const btnAdmin = el("button", {className:"btn btn-secondary btn-full", onClick: () => sendCodeAndContinue("admin")}, "Soy administrador — Ver resultados");
 
-  // Info note
-  const note = el("div", {style:{marginTop:"20px", fontSize:"12px", color:"var(--faint)", textAlign:"center"}},
-    "Tu identidad es anónima para los evaluados."
-  );
-  wrap.appendChild(note);
+  btns.appendChild(btnEval);
+  btns.appendChild(btnAdmin);
+  step1.appendChild(btns);
+  step1.appendChild(el("div", {style:{marginTop:"20px", fontSize:"12px", color:"var(--faint)", textAlign:"center"}}, "Recibirás un código de verificación en tu email corporativo."));
+  wrap.appendChild(step1);
   return wrap;
 }
+
+async function renderLoginStep2(email, role) {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+
+  const wrap = el("div", {className:"login-wrap"});
+  wrap.appendChild(el("div", {className:"login-badge"}, "DNIDW · " + CONFIG.periodo));
+  wrap.appendChild(el("div", {className:"login-title"}, "Verificación"));
+  wrap.appendChild(el("div", {className:"login-desc"}, `Introduce el código de 6 dígitos enviado a\n${email}`));
+
+  const codeWrap = el("div", {style:{marginBottom:"16px"}});
+  const codeLabel = el("label", {style:{display:"block", fontSize:"13px", fontWeight:"600", color:"var(--muted)", marginBottom:"6px"}}, "Código de verificación");
+  const codeInput = el("input", {
+    type:"text", placeholder:"000000", maxlength:"6",
+    style:{width:"100%", padding:"14px", borderRadius:"10px", border:"2px solid var(--indra)", fontSize:"22px", fontFamily:"inherit", color:"var(--text)", outline:"none", boxSizing:"border-box", textAlign:"center", letterSpacing:"8px", fontWeight:"800"}
+  });
+  codeWrap.appendChild(codeLabel);
+  codeWrap.appendChild(codeInput);
+  wrap.appendChild(codeWrap);
+
+  const btnVerify = el("button", {className:"btn btn-primary btn-full", onClick: async () => {
+    const code = codeInput.value.trim();
+    if (code.length !== 6) { alert("El código debe tener 6 dígitos."); return; }
+
+    state.loading = true;
+    app.innerHTML = "";
+    app.appendChild(el("div", {className:"loading"}, "⟳ Verificando código..."));
+
+    try {
+      await apiRequest("VerifyCode", { method:"POST", body: JSON.stringify({ email, code }) });
+
+      // Code valid — complete login
+      const isAdminUser = CONFIG.adminUsers.includes(email) || state.admins.includes(email);
+      const teamMember = state.team.find(m => (m.Email || "").toLowerCase() === email);
+      state.currentUser = {
+        id: email,
+        name: teamMember?.Nombre || email.split("@")[0],
+        email: email
+      };
+      state.isAdmin = isAdminUser;
+
+      if (role === "admin") {
+        await loadCampanas();
+        await loadEvaluators();
+        await loadResponses();
+        state.view = "adminDash";
+      } else {
+        await loadCampanas();
+        if (!state.campanaActiva) {
+          alert("No hay ninguna campaña de evaluación activa. Contacta con el administrador.");
+          state.loading = false; render(); return;
+        }
+        await loadEvaluators();
+        await loadResponses();
+        state.selectedSubjects = [];
+        state.view = "selectSubjects";
+      }
+    } catch(e) {
+      state.loading = false;
+      app.innerHTML = "";
+      wrap.querySelector("input").value = "";
+      const errMsg = e.message.includes("401") || e.message.includes("API Error")
+        ? "Código incorrecto o expirado. Inténtalo de nuevo."
+        : "Error: " + e.message;
+      const errDiv = el("div", {className:"alert alert-error", style:{marginBottom:"12px"}}, errMsg);
+      wrap.insertBefore(errDiv, wrap.querySelector(".btn"));
+      app.appendChild(wrap);
+      return;
+    }
+    state.loading = false;
+    render();
+  }}, "Verificar y entrar →");
+
+  wrap.appendChild(btnVerify);
+
+  // Resend code
+  const resendWrap = el("div", {style:{marginTop:"16px", textAlign:"center"}});
+  const resendBtn = el("button", {
+    style:{background:"none", border:"none", color:"var(--indra)", cursor:"pointer", fontSize:"13px", fontFamily:"inherit", fontWeight:"600"},
+    onClick: async () => {
+      resendBtn.textContent = "Enviando...";
+      resendBtn.disabled = true;
+      try {
+        await apiRequest("SendVerificationCode", { method:"POST", body: JSON.stringify({ email }) });
+        resendBtn.textContent = "✓ Código reenviado";
+        setTimeout(() => { resendBtn.textContent = "Reenviar código"; resendBtn.disabled = false; }, 3000);
+      } catch(e) {
+        resendBtn.textContent = "Error al reenviar";
+        resendBtn.disabled = false;
+      }
+    }
+  }, "Reenviar código");
+  resendWrap.appendChild(resendBtn);
+  resendWrap.appendChild(el("span", {style:{color:"var(--faint)", fontSize:"13px", marginLeft:"12px", cursor:"pointer"}, onClick: () => render()}, "← Cambiar email"));
+  wrap.appendChild(resendWrap);
+
+  app.appendChild(wrap);
+}
+
+
 
 function renderEvalList() {
   const cont = el("div", {className:"container"});
