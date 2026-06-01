@@ -217,11 +217,11 @@ const CONFIG = {
 };
 
 // ══════════════════════════════════════
-// AUTH (Azure Static Web Apps)
 // ══════════════════════════════════════
+// AUTH (email simple — sin Azure AD)
 // ══════════════════════════════════════
-// AUTH (Azure Static Web Apps /.auth/me)
-// ══════════════════════════════════════
+
+// getClientPrincipal mantenida por compatibilidad futura
 async function getClientPrincipal() {
   try {
     const res = await fetch('/.auth/me');
@@ -229,61 +229,48 @@ async function getClientPrincipal() {
     const payload = await res.json();
     return payload?.clientPrincipal || payload?.[0]?.clientPrincipal || null;
   } catch (e) {
-    console.error("Auth error", e);
     return null;
   }
 }
 
-async function initSecurity() {
-  try {
-    // autenticación via Azure Static Web Apps (mismo dominio, sin CORS)
-    const principal = await getClientPrincipal();
+function initSecurity(emailInput) {
+  const email = (emailInput || "").trim().toLowerCase();
 
-    // no autenticado → redirigir a login de Microsoft
-    if (!principal) {
-      window.location.href = "/.auth/login/aad?post_login_redirect_uri=" + encodeURIComponent(window.location.href);
-      return false;
-    }
-
-    // email desde Azure AD — fallback a userDetails si claims no disponible
-    const claims = principal.claims || [];
-    const emailClaim = claims.find(c => c.typ === "preferred_username" || c.typ === "email" || c.typ === "upn");
-    const email = (emailClaim?.val || principal.userDetails || "").toLowerCase();
-
-    if (!email) {
-      alert("No se pudo obtener el email del usuario autenticado.");
-      return false;
-    }
-
-    // control de acceso — solo equipo autorizado
-    if (CONFIG.allowedUsers && CONFIG.allowedUsers.length > 0) {
-      if (!CONFIG.allowedUsers.includes(email)) {
-        document.getElementById("app").innerHTML = `
-          <div style="padding:40px;text-align:center;font-family:'Segoe UI',sans-serif">
-            <div style="font-size:48px;margin-bottom:16px">🔒</div>
-            <h2 style="color:#1E293B;margin-bottom:8px">Acceso restringido</h2>
-            <p style="color:#64748B">El usuario <strong>${email}</strong> no pertenece al equipo autorizado.</p>
-          </div>
-        `;
-        return false;
-      }
-    }
-
-    // ✅ usuario válido
-    state.currentUser = {
-      id: principal.userId || email,
-      name: principal.userDetails || email,
-      email: email
-    };
-
-    // ✅ admin determinado desde adminUsers
-    state.isAdmin = CONFIG.adminUsers.includes(email);
-    return true;
-
-  } catch (e) {
-    alert("Error validando usuario: " + e.message);
+  if (!email) {
+    alert("Por favor introduce tu email corporativo.");
     return false;
   }
+
+  if (!email.includes("@")) {
+    alert("Introduce un email válido.");
+    return false;
+  }
+
+  // control de acceso — solo equipo autorizado
+  if (CONFIG.allowedUsers && CONFIG.allowedUsers.length > 0) {
+    if (!CONFIG.allowedUsers.includes(email)) {
+      document.getElementById("app").innerHTML = `
+        <div style="padding:60px 24px;text-align:center;font-family:'Segoe UI',sans-serif">
+          <div style="font-size:48px;margin-bottom:16px">🔒</div>
+          <h2 style="color:#1E293B;margin-bottom:8px">Acceso restringido</h2>
+          <p style="color:#64748B">El usuario <strong>${email}</strong> no pertenece al equipo autorizado.</p>
+          <button onclick="location.reload()" style="margin-top:20px;padding:10px 24px;background:#003DA5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">Volver</button>
+        </div>
+      `;
+      return false;
+    }
+  }
+
+  // ✅ usuario válido
+  state.currentUser = {
+    id: email,
+    name: email.split("@")[0],
+    email: email
+  };
+
+  // ✅ admin determinado desde adminUsers
+  state.isAdmin = CONFIG.adminUsers.includes(email);
+  return true;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -731,42 +718,67 @@ function renderLogin() {
   wrap.appendChild(el("div", {className:"login-title"}, "Evaluación 360°"));
   wrap.appendChild(el("div", {className:"login-desc"}, "Sistema de evaluación continua del equipo.\nAnónimo para el evaluado. Transparente para el administrador."));
 
+  // Email input
+  const emailWrap = el("div", {style:{marginBottom:"16px"}});
+  const emailLabel = el("label", {style:{display:"block", fontSize:"13px", fontWeight:"600", color:"var(--muted)", marginBottom:"6px"}}, "Tu email corporativo");
+  const emailInput = el("input", {
+    type:"email",
+    placeholder:"nombre@minsait.com",
+    style:{
+      width:"100%", padding:"12px 14px", borderRadius:"10px",
+      border:"1px solid var(--border)", fontSize:"14px",
+      fontFamily:"inherit", color:"var(--text)", outline:"none",
+      boxSizing:"border-box"
+    }
+  });
+  emailInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") btnEval.click();
+  });
+  emailWrap.appendChild(emailLabel);
+  emailWrap.appendChild(emailInput);
+  wrap.appendChild(emailWrap);
+
   const btns = el("div", {className:"login-btns"});
+
   const btnEval = el("button", {className:"btn btn-primary btn-full", onClick: async () => {
+    const ok = initSecurity(emailInput.value);
+    if (!ok) return;
     state.loading = true; render();
     try {
-      const ok = await initSecurity();
-      if (!ok) return;
       await loadTeam();
       await loadResponses();
       state.view = "evalList";
     } catch(e) {
-      alert("Error al conectar con SharePoint: " + e.message);
+      alert("Error al conectar con la API: " + e.message);
     }
     state.loading = false; render();
   }}, "Soy evaluador — Dar feedback");
 
   const btnAdmin = el("button", {className:"btn btn-secondary btn-full", onClick: async () => {
+    const ok = initSecurity(emailInput.value);
+    if (!ok) return;
+    if (!state.isAdmin) {
+      alert("Acceso restringido al administrador.");
+      return;
+    }
     state.loading = true; render();
     try {
-      const ok = await initSecurity();
-      if (!ok) return;
-      if (!state.isAdmin) {
-        alert("Acceso restringido al administrador.");
-        state.loading = false;
-        render();
-        return;
-      }
       await loadTeam(); await loadEvaluators(); await loadResponses();
       state.view = "adminDash";
     } catch(e) {
-      alert("Error al conectar con SharePoint: " + e.message);
+      alert("Error al conectar con la API: " + e.message);
     }
     state.loading = false; render();
   }}, "Soy administrador — Ver resultados");
 
   btns.appendChild(btnEval); btns.appendChild(btnAdmin);
   wrap.appendChild(btns);
+
+  // Info note
+  const note = el("div", {style:{marginTop:"20px", fontSize:"12px", color:"var(--faint)", textAlign:"center"}},
+    "Tu identidad es anónima para los evaluados."
+  );
+  wrap.appendChild(note);
   return wrap;
 }
 
