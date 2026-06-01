@@ -246,19 +246,20 @@ function initSecurity(emailInput) {
     return false;
   }
 
-  // control de acceso — solo equipo autorizado
-  if (CONFIG.allowedUsers && CONFIG.allowedUsers.length > 0) {
-    if (!CONFIG.allowedUsers.includes(email)) {
-      document.getElementById("app").innerHTML = `
-        <div style="padding:60px 24px;text-align:center;font-family:'Segoe UI',sans-serif">
-          <div style="font-size:48px;margin-bottom:16px">🔒</div>
-          <h2 style="color:#1E293B;margin-bottom:8px">Acceso restringido</h2>
-          <p style="color:#64748B">El usuario <strong>${email}</strong> no pertenece al equipo autorizado.</p>
-          <button onclick="location.reload()" style="margin-top:20px;padding:10px 24px;background:#003DA5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">Volver</button>
-        </div>
-      `;
-      return false;
-    }
+  // control de acceso — equipo autorizado (allowedUsers) O admin
+  const isAdminUser = CONFIG.adminUsers.includes(email) || state.admins.includes(email);
+  const isAllowed = isAdminUser || (CONFIG.allowedUsers && CONFIG.allowedUsers.includes(email));
+
+  if (!isAllowed) {
+    document.getElementById("app").innerHTML = `
+      <div style="padding:60px 24px;text-align:center;font-family:'Segoe UI',sans-serif">
+        <div style="font-size:48px;margin-bottom:16px">🔒</div>
+        <h2 style="color:#1E293B;margin-bottom:8px">Acceso restringido</h2>
+        <p style="color:#64748B">El usuario <strong>${email}</strong> no pertenece al equipo autorizado.</p>
+        <button onclick="location.reload()" style="margin-top:20px;padding:10px 24px;background:#003DA5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">Volver</button>
+      </div>
+    `;
+    return false;
   }
 
   // ✅ usuario válido
@@ -268,8 +269,8 @@ function initSecurity(emailInput) {
     email: email
   };
 
-  // ✅ admin determinado desde adminUsers
-  state.isAdmin = CONFIG.adminUsers.includes(email);
+  // ✅ admin: CONFIG hardcoded (root) O tabla Admins dinámica
+  state.isAdmin = isAdminUser;
   return true;
 }
 
@@ -431,13 +432,15 @@ const state = {
   evaluators: [],
   responses: [],
   campanas: [],
-  campanaActiva: null,  // { ID, Nombre, Mes, Anio }
-  selectedSubjects: [], // IDs seleccionados por el evaluador (F2)
-  configDrivers: {},    // { evaluadoID: { driverId: { Peso, Criterio1, Criterio2 } } }
+  campanaActiva: null,
+  selectedSubjects: [],
+  configDrivers: {},
+  admins: [],           // emails cargados desde tabla Admins
   adminTab: "dashboard",
   reportSubject: null,
   editingTeamItem: null,
   editingEvalItem: null,
+  editingAdminItem: null,
   editingCampana: null,
   editingConfigSubject: null,
   formData: {},
@@ -512,7 +515,23 @@ async function loadTeam() {
 }
 
 async function loadEvaluators() {
-  state.evaluators = await apiRequest("GetEvaluadores");
+  // Evaluadores = miembros del equipo con EvaluaTambien = true
+  // fallback: si ninguno tiene EvaluaTambien, carga lista Evaluadores legacy
+  const teamEvals = state.team.filter(m => m.EvaluaTambien);
+  if (teamEvals.length > 0) {
+    state.evaluators = teamEvals.map(m => ({ ID: m.ID, Nombre: m.Nombre, Email: m.ID, Activo: true }));
+  } else {
+    state.evaluators = await apiRequest("GetEvaluadores");
+  }
+}
+
+async function loadAdmins() {
+  try {
+    const data = await apiRequest("ManageData?table=Admins");
+    state.admins = data.map(a => (a.Email || a.Nombre || "").toLowerCase()).filter(Boolean);
+  } catch(e) {
+    state.admins = [];
+  }
 }
 
 async function loadCampanas() {
@@ -783,6 +802,9 @@ function renderLogin() {
   const btns = el("div", {className:"login-btns"});
 
   const btnEval = el("button", {className:"btn btn-primary btn-full", onClick: async () => {
+    state.loading = true; render();
+    try { await loadAdmins(); } catch(e) {}
+    state.loading = false;
     const ok = initSecurity(emailInput.value);
     if (!ok) return;
     state.loading = true; render();
@@ -793,6 +815,7 @@ function renderLogin() {
         alert("No hay ninguna campaña de evaluación activa. Contacta con el administrador.");
         state.loading = false; render(); return;
       }
+      await loadEvaluators();
       await loadResponses();
       state.selectedSubjects = [];
       state.view = "selectSubjects";
@@ -803,6 +826,9 @@ function renderLogin() {
   }}, "Soy evaluador — Dar feedback");
 
   const btnAdmin = el("button", {className:"btn btn-secondary btn-full", onClick: async () => {
+    state.loading = true; render();
+    try { await loadAdmins(); } catch(e) {}
+    state.loading = false;
     const ok = initSecurity(emailInput.value);
     if (!ok) return;
     if (!state.isAdmin) {
@@ -812,7 +838,9 @@ function renderLogin() {
     state.loading = true; render();
     try {
       await loadCampanas();
-      await loadTeam(); await loadEvaluators(); await loadResponses();
+      await loadTeam();
+      await loadEvaluators();
+      await loadResponses();
       state.view = "adminDash";
     } catch(e) {
       alert("Error al conectar con la API: " + e.message);
@@ -1473,16 +1501,174 @@ function renderAdminReport() {
 // ═══ ADMIN CONFIG ═══
 function renderAdminConfig() {
   const cont = el("div", {className:"container"});
-  cont.appendChild(el("div", {className:"page-title"}, "Gestión del equipo y evaluadores"));
+  cont.appendChild(el("div", {className:"page-title"}, "Gestión del equipo"));
 
-  // Team section
+  // ── Team section ──────────────────────────────────────
   const teamHeader = el("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px",marginTop:"20px"}});
   teamHeader.appendChild(el("div", {className:"section-label", style:{margin:"0"}}, "Equipo evaluado"));
   teamHeader.appendChild(el("button", {className:"btn btn-primary btn-sm", onClick: () => {
-    state.editingTeamItem = {isNew: true, Nombre:"", Rol:"Consultant", Grado:"I", Activo: true};
+    state.editingTeamItem = {isNew: true, Nombre:"", Rol:"Consultant", Grado:"I", Activo: true, EvaluaTambien: false};
     render();
   }}, "+ Añadir"));
   cont.appendChild(teamHeader);
+
+  if (state.editingTeamItem) {
+    const f = state.editingTeamItem;
+    const formCard = el("div", {className:"card card-blue", style:{marginBottom:"12px"}});
+    formCard.appendChild(el("div", {className:"section-label"}, f.isNew ? "Nuevo miembro" : "Editar miembro"));
+
+    const row1 = el("div", {className:"form-row"});
+    const nameInput = el("input", {type:"text", placeholder:"Nombre completo"});
+    nameInput.value = f.Nombre || "";
+    nameInput.addEventListener("input", e => state.editingTeamItem.Nombre = e.target.value);
+    const rolSel = el("select");
+    ["Analyst","Consultant","Senior Consultant","Project Manager","Manager","Senior Manager"].forEach(r => {
+      const o = el("option", {value:r}, r);
+      if (f.Rol === r) o.selected = true;
+      rolSel.appendChild(o);
+    });
+    rolSel.addEventListener("change", e => state.editingTeamItem.Rol = e.target.value);
+    row1.appendChild(el("div", {className:"form-group"}, nameInput));
+    row1.appendChild(el("div", {className:"form-group"}, rolSel));
+    formCard.appendChild(row1);
+
+    const row2 = el("div", {className:"form-row"});
+    const gradSel = el("select");
+    ["I","II","III","IV","V","VI"].forEach(g => {
+      const o = el("option", {value:g}, g);
+      if (f.Grado === g) o.selected = true;
+      gradSel.appendChild(o);
+    });
+    gradSel.addEventListener("change", e => state.editingTeamItem.Grado = e.target.value);
+
+    const emailInput2 = el("input", {type:"text", placeholder:"email@minsait.com (para login)"});
+    emailInput2.value = f.Email || "";
+    emailInput2.addEventListener("input", e => state.editingTeamItem.Email = e.target.value);
+    row2.appendChild(el("div", {className:"form-group"}, gradSel));
+    row2.appendChild(el("div", {className:"form-group"}, emailInput2));
+    formCard.appendChild(row2);
+
+    const checksRow = el("div", {style:{display:"flex", gap:"20px", marginBottom:"12px", flexWrap:"wrap"}});
+    const chkActivo = el("div", {className:"checkbox-row"});
+    const chkA = el("input", {type:"checkbox"});
+    chkA.checked = f.Activo !== false;
+    chkA.addEventListener("change", e => state.editingTeamItem.Activo = e.target.checked);
+    chkActivo.appendChild(chkA);
+    chkActivo.appendChild(document.createTextNode("Activo en la campaña"));
+
+    const chkEvalRow = el("div", {className:"checkbox-row"});
+    const chkE = el("input", {type:"checkbox"});
+    chkE.checked = f.EvaluaTambien === true;
+    chkE.addEventListener("change", e => state.editingTeamItem.EvaluaTambien = e.target.checked);
+    chkEvalRow.appendChild(chkE);
+    chkEvalRow.appendChild(document.createTextNode("También evalúa a otros"));
+    checksRow.appendChild(chkActivo);
+    checksRow.appendChild(chkEvalRow);
+    formCard.appendChild(checksRow);
+
+    const btnRow = el("div", {style:{display:"flex",gap:"8px"}});
+    btnRow.appendChild(el("button", {className:"btn btn-primary btn-sm", onClick: async () => {
+      const item = {
+        Nombre: f.Nombre, Rol: f.Rol, Grado: f.Grado,
+        Activo: f.Activo !== false, EvaluaTambien: f.EvaluaTambien === true,
+        Email: f.Email || ""
+      };
+      if (f.isNew) await createListItem(CONFIG.lists.equipo, item);
+      else await updateListItem(CONFIG.lists.equipo, f.ID, item);
+      await loadTeam(); await loadEvaluators();
+      state.editingTeamItem = null; render();
+    }}, "Guardar"));
+    btnRow.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: () => { state.editingTeamItem = null; render(); }}, "Cancelar"));
+    formCard.appendChild(btnRow);
+    cont.appendChild(formCard);
+  }
+
+  state.team.forEach(m => {
+    const item = el("div", {style:{display:"flex",alignItems:"center",gap:"10px",padding:"12px 16px",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"10px",marginBottom:"6px"}});
+    const info = el("div", {style:{flex:"1"}});
+    info.appendChild(el("div", {style:{fontWeight:"700",fontSize:"14px",color:"var(--text)"}}, m.Nombre));
+    const subInfo = el("div", {style:{fontSize:"12px",color:"var(--faint)",marginTop:"2px",display:"flex",gap:"8px",flexWrap:"wrap"}});
+    subInfo.appendChild(document.createTextNode(`${m.Rol} · Grado ${m.Grado}`));
+    if (m.EvaluaTambien) {
+      const evalPill = el("span", {style:{background:"var(--blue-bg)",color:"var(--blue)",padding:"1px 8px",borderRadius:"10px",fontSize:"10px",fontWeight:"700"}}, "También evalúa");
+      subInfo.appendChild(evalPill);
+    }
+    info.appendChild(subInfo);
+    item.appendChild(info);
+    const activePill = el("span", {className:"pill"});
+    activePill.style.background = m.Activo ? "var(--green-bg)" : "#F1F5F9";
+    activePill.style.color = m.Activo ? "var(--green)" : "var(--faint)";
+    activePill.textContent = m.Activo ? "Activo" : "Inactivo";
+    item.appendChild(activePill);
+    item.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: () => {
+      state.editingTeamItem = {...m}; render();
+    }}, "Editar"));
+    item.appendChild(el("button", {className:"btn btn-danger btn-sm", onClick: async () => {
+      if (confirm(`¿Eliminar a ${m.Nombre}?`)) {
+        await deleteListItem(CONFIG.lists.equipo, m.ID);
+        await loadTeam(); await loadEvaluators(); render();
+      }
+    }}, "Eliminar"));
+    cont.appendChild(item);
+  });
+
+  // ── Admins section ────────────────────────────────────
+  const adminsHeader = el("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px",marginTop:"28px"}});
+  adminsHeader.appendChild(el("div", {className:"section-label", style:{margin:"0"}}, "Administradores"));
+  adminsHeader.appendChild(el("button", {className:"btn btn-primary btn-sm", onClick: () => {
+    state.editingAdminItem = {isNew: true, Email:""};
+    render();
+  }}, "+ Añadir"));
+  cont.appendChild(adminsHeader);
+  cont.appendChild(el("div", {style:{fontSize:"12px",color:"var(--faint)",marginBottom:"10px"}}, "Los administradores pueden ver resultados, gestionar campañas y configurar drivers. Tu email siempre tiene acceso de admin."));
+
+  if (state.editingAdminItem) {
+    const f = state.editingAdminItem;
+    const formCard = el("div", {className:"card card-blue", style:{marginBottom:"12px"}});
+    formCard.appendChild(el("div", {className:"section-label"}, "Nuevo administrador"));
+    const emailInput3 = el("input", {type:"text", placeholder:"email@minsait.com"});
+    emailInput3.value = f.Email || "";
+    emailInput3.addEventListener("input", e => state.editingAdminItem.Email = e.target.value);
+    formCard.appendChild(el("div", {className:"form-group"}, emailInput3));
+    const btnRow = el("div", {style:{display:"flex",gap:"8px",marginTop:"10px"}});
+    btnRow.appendChild(el("button", {className:"btn btn-primary btn-sm", onClick: async () => {
+      const email = (f.Email || "").trim().toLowerCase();
+      if (!email.includes("@")) { alert("Email no válido."); return; }
+      await apiRequest("ManageData?table=Admins", { method:"POST", body: JSON.stringify({ ID: email, Nombre: email, Email: email, Activo: true }) });
+      await loadAdmins(); state.editingAdminItem = null; render();
+    }}, "Guardar"));
+    btnRow.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: () => { state.editingAdminItem = null; render(); }}, "Cancelar"));
+    formCard.appendChild(btnRow);
+    cont.appendChild(formCard);
+  }
+
+  // List dynamic admins (from table)
+  state.admins.forEach(adminEmail => {
+    if (CONFIG.adminUsers.includes(adminEmail)) return; // skip root admins
+    const item = el("div", {style:{display:"flex",alignItems:"center",gap:"10px",padding:"12px 16px",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"10px",marginBottom:"6px"}});
+    item.appendChild(el("div", {style:{flex:"1",fontWeight:"600",fontSize:"14px",color:"var(--text)"}}, adminEmail));
+    item.appendChild(el("span", {className:"pill", style:{background:"var(--purple-bg)",color:"var(--purple)"}}, "Admin"));
+    item.appendChild(el("button", {className:"btn btn-danger btn-sm", onClick: async () => {
+      if (confirm(`¿Eliminar acceso de administrador a ${adminEmail}?`)) {
+        await apiRequest(`ManageData?table=Admins&id=${adminEmail}`, { method:"DELETE" });
+        await loadAdmins(); render();
+      }
+    }}, "Eliminar"));
+    cont.appendChild(item);
+  });
+
+  // Root admins (read-only)
+  CONFIG.adminUsers.forEach(adminEmail => {
+    const item = el("div", {style:{display:"flex",alignItems:"center",gap:"10px",padding:"12px 16px",background:"#F8FAFC",border:"1px solid var(--border)",borderRadius:"10px",marginBottom:"6px",opacity:"0.8"}});
+    item.appendChild(el("div", {style:{flex:"1",fontWeight:"600",fontSize:"14px",color:"var(--text)"}}, adminEmail));
+    item.appendChild(el("span", {className:"pill", style:{background:"var(--purple-bg)",color:"var(--purple)"}}, "Admin raíz"));
+    cont.appendChild(item);
+  });
+
+  return cont;
+}
+
+
 
   if (state.editingTeamItem) {
     const f = state.editingTeamItem;
@@ -1555,69 +1741,6 @@ function renderAdminConfig() {
     }}, "Eliminar"));
     cont.appendChild(item);
   });
-
-  // Evaluators section
-  const evalHeader = el("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px",marginTop:"28px"}});
-  evalHeader.appendChild(el("div", {className:"section-label", style:{margin:"0"}}, "Evaluadores"));
-  evalHeader.appendChild(el("button", {className:"btn btn-primary btn-sm", onClick: () => {
-    state.editingEvalItem = {isNew: true, Nombre:"", Email:"", Activo: true};
-    render();
-  }}, "+ Añadir"));
-  cont.appendChild(evalHeader);
-
-  if (state.editingEvalItem) {
-    const f = state.editingEvalItem;
-    const formCard = el("div", {className:"card card-blue", style:{marginBottom:"12px"}});
-    formCard.appendChild(el("div", {className:"section-label"}, f.isNew ? "Nuevo evaluador" : "Editar evaluador"));
-    const nameInput = el("input", {type:"text", placeholder:"Nombre completo"});
-    nameInput.value = f.Nombre || "";
-    nameInput.addEventListener("input", e => state.editingEvalItem.Nombre = e.target.value);
-    const emailInput = el("input", {type:"text", placeholder:"email@minsait.com"});
-    emailInput.value = f.Email || "";
-    emailInput.addEventListener("input", e => state.editingEvalItem.Email = e.target.value);
-    const checkRow = el("div", {className:"checkbox-row", style:{marginTop:"8px"}});
-    const chk = el("input", {type:"checkbox"});
-    chk.checked = f.Activo !== false;
-    chk.addEventListener("change", e => state.editingEvalItem.Activo = e.target.checked);
-    checkRow.appendChild(chk);
-    checkRow.appendChild(document.createTextNode("Activo en la campaña"));
-
-    formCard.appendChild(el("div", {className:"form-group"}, nameInput));
-    formCard.appendChild(el("div", {className:"form-group"}, emailInput));
-    formCard.appendChild(checkRow);
-
-    const btnRow = el("div", {style:{display:"flex",gap:"8px",marginTop:"12px"}});
-    btnRow.appendChild(el("button", {className:"btn btn-primary btn-sm", onClick: async () => {
-      const item = { Nombre: f.Nombre, Email: f.Email, Activo: f.Activo !== false };
-      if (f.isNew) await createListItem(CONFIG.lists.evaluadores, item);
-      else await updateListItem(CONFIG.lists.evaluadores, f.ID, item);
-      await loadEvaluators(); state.editingEvalItem = null; render();
-    }}, "Guardar"));
-    btnRow.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: () => { state.editingEvalItem = null; render(); }}, "Cancelar"));
-    formCard.appendChild(btnRow);
-    cont.appendChild(formCard);
-  }
-
-  state.evaluators.forEach(e => {
-    const item = el("div", {style:{display:"flex",alignItems:"center",gap:"10px",padding:"12px 16px",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"10px",marginBottom:"6px"}});
-    const info = el("div", {style:{flex:"1"}});
-    info.appendChild(el("div", {style:{fontWeight:"700",fontSize:"14px",color:"var(--text)"}}, e.Nombre));
-    info.appendChild(el("div", {style:{fontSize:"12px",color:"var(--faint)"}}, e.Email || ""));
-    item.appendChild(info);
-    item.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: () => {
-      state.editingEvalItem = {...e}; render();
-    }}, "Editar"));
-    item.appendChild(el("button", {className:"btn btn-danger btn-sm", onClick: async () => {
-      if (confirm(`¿Eliminar a ${e.Nombre}?`)) {
-        await deleteListItem(CONFIG.lists.evaluadores, e.ID);
-        await loadEvaluators(); render();
-      }
-    }}, "Eliminar"));
-    cont.appendChild(item);
-  });
-
-  return cont;
-}
 
 // ═══════════════════════════════════════════════════════
 // MAIN RENDER
@@ -1722,14 +1845,12 @@ function renderAdminCampanas() {
 function renderResumenCampana(campana, responses) {
   const app = document.getElementById("app");
   app.innerHTML = "";
-
   const topbar = renderTopbar();
   if (topbar) app.appendChild(topbar);
 
   const cont = el("div", {className:"container"});
   cont.appendChild(el("button", {className:"btn btn-secondary btn-sm", style:{marginBottom:"20px"}, onClick: () => { state.view = "adminCampanas"; render(); }}, "← Volver a campañas"));
   cont.appendChild(el("div", {className:"page-title"}, `Resumen ejecutivo · ${campana.Nombre}`));
-  cont.appendChild(el("div", {className:"page-sub"}, `${responses.length} evaluaciones recibidas`));
 
   if (!responses.length) {
     cont.appendChild(el("div", {className:"empty"}, "Sin evaluaciones en esta campaña."));
@@ -1737,26 +1858,42 @@ function renderResumenCampana(campana, responses) {
     return;
   }
 
+  const evaluadosIDs = [...new Set(responses.map(r => r.EvaluadoID))];
+  const evaluadoresIDs = [...new Set(responses.map(r => r.EvaluadorID))];
+  const totalEvaluadores = state.evaluators.length || evaluadoresIDs.length;
+  const evaluadoresQueEnviaron = evaluadoresIDs.length;
+  const pctParticipacion = totalEvaluadores > 0 ? Math.round(evaluadoresQueEnviaron / totalEvaluadores * 100) : 100;
+
   // Stats globales
-  const statsGrid = el("div", {className:"stats-grid", style:{marginBottom:"20px"}});
-  const evaluados = [...new Set(responses.map(r => r.EvaluadoID))];
-  const evaluadores = [...new Set(responses.map(r => r.EvaluadorID))];
+  const statsGrid = el("div", {className:"stats-grid", style:{marginBottom:"16px"}});
   [
-    {n: evaluados.length, l: "Evaluados"},
-    {n: evaluadores.length, l: "Evaluadores"},
+    {n: evaluadosIDs.length, l: "Evaluados"},
+    {n: `${evaluadoresQueEnviaron}/${totalEvaluadores}`, l: "Participación"},
+    {n: `${pctParticipacion}%`, l: "Tasa de respuesta"},
     {n: responses.length, l: "Evaluaciones totales"}
   ].forEach(({n,l}) => {
     const sc = el("div", {className:"stat-card"});
-    sc.appendChild(el("div", {className:"stat-number"}, String(n)));
+    sc.appendChild(el("div", {className:"stat-number", style:{fontSize:"22px"}}, String(n)));
     sc.appendChild(el("div", {className:"stat-label"}, l));
     statsGrid.appendChild(sc);
   });
   cont.appendChild(statsGrid);
 
-  // Ranking de evaluados
+  // Evaluadores que aún no han enviado
+  const evaluadoresPendientes = state.evaluators.filter(e => !evaluadoresIDs.includes(e.ID) && !evaluadoresIDs.includes(e.Email));
+  if (evaluadoresPendientes.length) {
+    const pendCard = el("div", {className:"card card-warn", style:{marginBottom:"16px"}});
+    pendCard.appendChild(el("div", {className:"section-label"}, "⏳ Evaluadores pendientes"));
+    evaluadoresPendientes.forEach(e => {
+      pendCard.appendChild(el("div", {style:{fontSize:"13px", color:"var(--yellow)", padding:"3px 0"}}, `· ${e.Nombre}`));
+    });
+    cont.appendChild(pendCard);
+  }
+
+  // Ranking del equipo
   const rankCard = el("div", {className:"card", style:{marginBottom:"16px"}});
-  rankCard.appendChild(el("div", {className:"section-label"}, "Ranking del equipo"));
-  const ranking = evaluados.map(id => {
+  rankCard.appendChild(el("div", {className:"section-label"}, "🏆 Ranking del equipo"));
+  const ranking = evaluadosIDs.map(id => {
     const member = state.team.find(m => m.ID === id);
     const resps = responses.filter(r => r.EvaluadoID === id);
     const avg = calcWeightedAvg(resps, member?.Rol, member);
@@ -1765,13 +1902,13 @@ function renderResumenCampana(campana, responses) {
 
   ranking.forEach((item, idx) => {
     const row = el("div", {style:{display:"flex", alignItems:"center", gap:"12px", padding:"10px 0", borderBottom:"1px solid var(--border)"}});
-    const num = el("div", {style:{width:"28px", height:"28px", borderRadius:"50%", background: idx === 0 ? "#FCD34D" : idx === 1 ? "#D1D5DB" : idx === 2 ? "#D97706" : "var(--indra-light)", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:"800", fontSize:"13px", color: idx < 3 ? "#1E293B" : "var(--indra)", flexShrink:"0"}}, String(idx+1));
-    row.appendChild(num);
+    const medal = ["🥇","🥈","🥉"][idx] || `${idx+1}.`;
+    row.appendChild(el("div", {style:{width:"28px", textAlign:"center", fontSize:"16px", flexShrink:"0"}}, medal));
     const info = el("div", {style:{flex:"1"}});
     info.appendChild(el("div", {style:{fontWeight:"700", fontSize:"13px", color:"var(--text)"}}, item.nombre));
     info.appendChild(el("div", {style:{fontSize:"11px", color:"var(--faint)"}}, `${item.rol} · ${item.count} evaluaciones`));
     row.appendChild(info);
-    const scoreEl = el("div", {style:{fontWeight:"900", fontSize:"18px", color: getScoreColor(item.avg.toString())}}, item.avg > 0 ? item.avg.toFixed(2) : "–");
+    const scoreEl = el("div", {style:{fontWeight:"900", fontSize:"18px", color: item.avg > 0 ? getScoreColor(item.avg.toFixed(1)) : "var(--faint)"}}, item.avg > 0 ? item.avg.toFixed(2) : "–");
     row.appendChild(scoreEl);
     rankCard.appendChild(row);
   });
@@ -1779,21 +1916,49 @@ function renderResumenCampana(campana, responses) {
 
   // Drivers medios del equipo
   const driversCard = el("div", {className:"card", style:{marginBottom:"16px"}});
-  driversCard.appendChild(el("div", {className:"section-label"}, "Media de drivers del equipo"));
-  DRIVER_ORDER.forEach(d => {
-    const avg = calcDriverAvg(responses, d);
+  driversCard.appendChild(el("div", {className:"section-label"}, "📊 Media de drivers del equipo"));
+  const driverAvgs = DRIVER_ORDER.map(d => ({ d, avg: calcDriverAvg(responses, d) }));
+  const bestDriver = driverAvgs.filter(x => x.avg).sort((a,b) => parseFloat(b.avg) - parseFloat(a.avg))[0];
+  const worstDriver = driverAvgs.filter(x => x.avg).sort((a,b) => parseFloat(a.avg) - parseFloat(b.avg))[0];
+  driverAvgs.forEach(({d, avg}) => {
     const avgNum = avg ? parseFloat(avg) : 0;
+    const isBest = d === bestDriver?.d;
+    const isWorst = d === worstDriver?.d;
     const row = el("div", {style:{display:"flex", alignItems:"center", gap:"12px", padding:"8px 0", borderBottom:"1px solid var(--border)"}});
     row.appendChild(el("span", {style:{fontSize:"16px", width:"22px"}}, DRIVER_ICONS[d]));
-    row.appendChild(el("div", {style:{flex:"1", fontSize:"13px", fontWeight:"600", color:"var(--text)"}}, DRIVER_NAMES[d]));
+    const nameWrap = el("div", {style:{flex:"1"}});
+    nameWrap.appendChild(el("div", {style:{fontSize:"13px", fontWeight:"600", color:"var(--text)"}}, DRIVER_NAMES[d]));
+    if (isBest) nameWrap.appendChild(el("div", {style:{fontSize:"10px", color:"var(--green)", fontWeight:"700"}}, "▲ Punto fuerte del equipo"));
+    if (isWorst && d !== bestDriver?.d) nameWrap.appendChild(el("div", {style:{fontSize:"10px", color:"var(--yellow)", fontWeight:"700"}}, "↑ Área de desarrollo"));
+    row.appendChild(nameWrap);
     const barWrap = el("div", {className:"driver-bar-wrap"});
     barWrap.appendChild(renderProgressBar(avgNum/5, avg ? getScoreColor(avg) : undefined));
     row.appendChild(barWrap);
-    const scoreEl = el("div", {style:{width:"36px", textAlign:"center", fontWeight:"800", fontSize:"14px", color: avg ? getScoreColor(avg) : "var(--faint)"}}, avg || "–");
-    row.appendChild(scoreEl);
+    row.appendChild(el("div", {style:{width:"36px", textAlign:"center", fontWeight:"800", fontSize:"14px", color: avg ? getScoreColor(avg) : "var(--faint)"}}, avg || "–"));
     driversCard.appendChild(row);
   });
   cont.appendChild(driversCard);
+
+  // Evaluadores con scores extremos (solo 4 y 5)
+  const extremos = evaluadoresIDs.filter(evID => {
+    const evResps = responses.filter(r => r.EvaluadorID === evID);
+    return evResps.every(r => DRIVER_ORDER.every(d => {
+      const map = { capacidad_analitica:"CapAnalit", excelencia_entrega:"ExcEntrega", trabajo_equipo:"TrabEquipo", gestion:"Gestion", interlocucion:"Interlocucion", conocimiento_tecnico:"ConocTecnico" };
+      const score = r[`Score_${map[d]}`] || 0;
+      return score === 0 || score >= 4;
+    }));
+  });
+
+  if (extremos.length) {
+    const extremosCard = el("div", {className:"card", style:{marginBottom:"16px", background:"#FFFBEB", borderColor:"#FDE68A"}});
+    extremosCard.appendChild(el("div", {className:"section-label"}, "⚠️ Evaluadores con sesgo positivo (solo puntuaciones 4 y 5)"));
+    extremosCard.appendChild(el("div", {style:{fontSize:"12px", color:"var(--yellow)", marginBottom:"8px"}}, "Estos evaluadores han usado exclusivamente puntuaciones altas en todas sus evaluaciones. Considera revisarlas."));
+    extremos.forEach(evID => {
+      const evaluador = state.evaluators.find(e => e.ID === evID || e.Email === evID);
+      extremosCard.appendChild(el("div", {style:{fontSize:"13px", color:"var(--text)", padding:"3px 0"}}, `· ${evaluador?.Nombre || evID}`));
+    });
+    cont.appendChild(extremosCard);
+  }
 
   app.appendChild(cont);
 }
