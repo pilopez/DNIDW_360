@@ -487,7 +487,162 @@ const DRIVERS_CONFIG = {
     }
   },
   // ══════════════════════════════════════
-  // CONTINUACIÓN BTC
+  // CARRERA TECHNOLOGY OPERATIONS (TO)
+  // ══════════════════════════════════════
+  "Systems Technician": {
+    weights: {capacidad_analitica:0.10,excelencia_entrega:0.25,trabajo_equipo:0.20,gestion:0.15,interlocucion:0.10,conocimiento_tecnico:0.20},
+    criteria: {
+      capacidad_analitica:["Participa en la construcción de módulos de menor complejidad siguiendo las especificaciones recibidas","Sigue fielmente las metodologías de desarrollo del proyecto; consulta a su responsable ante los problemas que se presentan"],
+      excelencia_entrega:["Entrega los componentes en plazo y calidad; realiza pruebas unitarias y elabora la documentación asociada","Realiza el trabajo en los plazos marcados cumpliendo con las estimaciones de esfuerzo y alcance establecidos"],
+      trabajo_equipo:["Colabora con otros en tareas comunes; cumple los compromisos y tareas asignadas dentro del equipo","Se integra en el equipo de trabajo y muestra disponibilidad y disposición colaborativa"],
+      gestion:["Conoce y utiliza las herramientas y procedimientos corporativos de forma adecuada","Mantiene actualizada y debidamente detallada la información y conocimientos aplicables a su puesto"],
+      interlocucion:["Muestra interés por conocer y entender los requerimientos y necesidades del cliente","Ofrece una imagen de profesionalidad y muestra interés por conocer la organización"],
+      conocimiento_tecnico:["Se consolida técnicamente manteniendo actualizados los conocimientos técnicos necesarios en su trabajo","Tiene conocimientos básicos sobre estándares, metodologías y herramientas de su ámbito"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["No sigue los procedimientos establecidos con la consistencia esperada","Dificultades para aplicar las especificaciones recibidas de forma autónoma"],mid:["Sigue los procedimientos con supervisión; aplica especificaciones en módulos sencillos","Consulta los problemas de forma proactiva; mejora progresiva en autonomía"],high:["Sigue procedimientos con rigor y autonomía para su nivel","Resuelve incidencias básicas y aplica especificaciones con fiabilidad"]},
+      excelencia_entrega:{low:["Incumplimientos de plazo o calidad frecuentes en los entregables","Pruebas unitarias incompletas o documentación deficiente"],mid:["Cumple plazos y calidad con supervisión; pruebas y documentación correctas","Entregables de calidad aceptable con margen de mejora en autonomía"],high:["Entrega consistente en plazo y calidad sin supervisión continua","Pruebas y documentación impecables; referente de fiabilidad en su nivel"]},
+      trabajo_equipo:{low:["Integración en el equipo mejorable; compromisos no siempre cumplidos","Colaboración reactiva o insuficiente en tareas comunes"],mid:["Buena integración en el equipo; cumple compromisos habituales","Colaboración activa en tareas asignadas; disposición positiva"],high:["Integración ejemplar en el equipo; compromiso y disposición destacados","Colabora proactivamente y facilita el trabajo de sus compañeros"]},
+      gestion:{low:["Uso de herramientas corporativas incompleto o incorrecto","Información del puesto no actualizada con la frecuencia requerida"],mid:["Usa herramientas correctamente con recordatorio ocasional","Información actualizada con frecuencia; algún gap puntual"],high:["Domina las herramientas corporativas con autonomía y rigor","Información siempre actualizada y detallada; referente de orden en su equipo"]},
+      interlocucion:{low:["Poca atención a las necesidades del cliente en su trabajo diario","Imagen de profesionalidad mejorable en las interacciones"],mid:["Muestra interés por el cliente con margen de mayor proactividad","Imagen profesional correcta en los contextos habituales"],high:["Sensibilidad clara hacia las necesidades del cliente en cada tarea","Imagen de profesionalidad destacada y reconocida por cliente y equipo"]},
+      conocimiento_tecnico:{low:["Conocimiento técnico insuficiente para su nivel de Systems Technician","Herramientas y metodologías básicas no dominadas aún"],mid:["Conocimiento técnico en consolidación con progreso visible","Herramientas básicas manejadas correctamente; metodologías en aprendizaje"],high:["Conocimiento técnico sólido y actualizado para su nivel","Referente técnico de base en el equipo; herramientas dominadas con soltura"]}
+    }
+  },
+  "Jr Systems Engineer": {
+    weights: {capacidad_analitica:0.15,excelencia_entrega:0.25,trabajo_equipo:0.15,gestion:0.15,interlocucion:0.10,conocimiento_tecnico:0.20},
+    criteria: {
+      capacidad_analitica:["Participa en el diseño técnico de módulos sencillos y en la construcción de módulos de complejidad simple y media","Sigue fielmente las metodologías de desarrollo; muestra interés por conocer su entorno de trabajo y los resultados esperados"],
+      excelencia_entrega:["Realiza las pruebas unitarias y apoya en la elaboración de manuales y documentación del proyecto","Resuelve las incidencias técnicas más sencillas siguiendo el procedimiento establecido; entrega el trabajo en los plazos marcados"],
+      trabajo_equipo:["Se integra en el equipo de trabajo al que pertenece; cumple los compromisos y tareas asignadas","Muestra interés por conocer las necesidades del cliente y por aprender y evolucionar técnicamente"],
+      gestion:["Apoya en la impartición de la formación a usuarios; participa en la elaboración de manuales","Evoluciona técnicamente adquiriendo progresivamente más conocimientos; busca activamente oportunidades de formación"],
+      interlocucion:["Muestra interés por conocer y entender los requerimientos y necesidades del cliente","Muestra interés por conocer la organización; actualiza el CV al menos una vez cada seis meses"],
+      conocimiento_tecnico:["Busca activamente oportunidades para ampliar o profundizar en conocimientos técnicos","Es riguroso en los trabajos que realiza en términos de datos, documentación y calidad"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["Dificultades en el diseño técnico de módulos sencillos","Seguimiento de metodologías inconsistente para su nivel"],mid:["Diseño técnico de módulos sencillos correcto con supervisión","Metodologías seguidas con rigor; margen de mayor autonomía"],high:["Diseño y construcción de módulos sencillos y medios con soltura","Metodologías aplicadas con autonomía y comprensión del porqué"]},
+      excelencia_entrega:{low:["Pruebas unitarias incompletas o con errores frecuentes","Incumplimientos de plazo o documentación deficiente habituales"],mid:["Pruebas y documentación correctas con supervisión","Cumple plazos con apoyo; entregables de calidad aceptable"],high:["Pruebas y documentación impecables de forma autónoma","Cumplimiento sistemático de plazos y calidad sin recordatorio"]},
+      trabajo_equipo:{low:["Integración en el equipo mejorable; compromisos no siempre cumplidos","Poca proactividad en el aprendizaje y evolución técnica"],mid:["Buena integración; compromisos cumplidos habitualmente","Aprendizaje activo aunque no siempre estructurado"],high:["Integración ejemplar y compromiso reconocido por el equipo","Motor de aprendizaje propio; evolución técnica visible y constante"]},
+      gestion:{low:["Apoyo en formación y documentación insuficiente para su rol","Poca búsqueda activa de formación complementaria"],mid:["Apoya en formación con orientación; documentación correcta","Busca formación con cierta proactividad; progreso visible"],high:["Referente en apoyo formativo y documentación de calidad","Búsqueda proactiva de formación; crecimiento técnico constante y demostrado"]},
+      interlocucion:{low:["Escaso interés demostrado por las necesidades del cliente","Conocimiento de la organización muy limitado"],mid:["Interés por el cliente presente aunque no siempre proactivo","Conocimiento de la organización en desarrollo progresivo"],high:["Interés genuino y proactivo por las necesidades del cliente","Buen conocimiento de la organización; imagen profesional destacada"]},
+      conocimiento_tecnico:{low:["Búsqueda de conocimiento técnico escasa o reactiva","Rigor en el trabajo mejorable en datos y documentación"],mid:["Busca formación técnica con apoyo; rigor correcto en la mayoría de tareas","Conocimiento técnico en desarrollo progresivo"],high:["Búsqueda proactiva y constante de conocimiento técnico","Rigor impecable en datos, documentación y entregables"]}
+    }
+  },
+  "Systems Engineer": {
+    weights: {capacidad_analitica:0.15,excelencia_entrega:0.20,trabajo_equipo:0.20,gestion:0.15,interlocucion:0.10,conocimiento_tecnico:0.20},
+    criteria: {
+      capacidad_analitica:["Realiza el diseño técnico y/o funcional de los módulos menos complejos de manera autónoma y participa en el de los más complejos","Identifica riesgos, puntos críticos, anticipa desviaciones y los traslada a su responsable; cumple estrictamente los procedimientos de paso a producción"],
+      excelencia_entrega:["Realiza la construcción de módulos y apoya técnicamente a las personas con menos experiencia; elabora manuales y documentación","Realiza pruebas integradas, revisa resultados con su responsable y realiza pruebas unitarias de acuerdo a la metodología establecida"],
+      trabajo_equipo:["Comparte los conocimientos técnicos con el resto del equipo; cumple los compromisos y tareas asignadas","Establece objetivos y prioridades claros a las personas a su cargo; el equipo lo reconoce como persona de referencia"],
+      gestion:["Se consolida técnicamente ampliando sus conocimientos técnicos y tecnológicos; identifica y propone mejoras en la forma de realizar el trabajo","Tiene una actitud proactiva de mejora continua en su trabajo; muestra interés por conocer su entorno de trabajo"],
+      interlocucion:["Conoce los requerimientos y necesidades del cliente; participa y apoya en la elaboración de la propuesta técnica","Propone mejoras técnicas que aportan ventajas competitivas con respecto a la competencia"],
+      conocimiento_tecnico:["Se consolida técnicamente ampliando conocimientos técnicos y tecnológicos; está familiarizado con el entorno funcional en el que trabaja","Busca activamente oportunidades para ampliar o profundizar en conocimientos tecnológicos; domina las herramientas con las que trabaja"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["Diseño técnico autónomo de módulos sencillos con dificultades frecuentes","Identificación de riesgos insuficiente para su nivel de Systems Engineer"],mid:["Diseño técnico autónomo correcto en módulos sencillos; apoyo en los complejos","Identifica riesgos habituales; los más complejos con orientación del responsable"],high:["Diseño técnico autónomo y de calidad en módulos de variada complejidad","Anticipa riesgos con anticipación y propone planes de acción de forma proactiva"]},
+      excelencia_entrega:{low:["Construcción de módulos con errores o incumplimiento de plazos frecuente","Pruebas y documentación incompletas o de calidad insuficiente"],mid:["Construcción correcta con supervisión; pruebas y documentación adecuadas","Cumple plazos habitualmente; calidad de entregables en mejora progresiva"],high:["Construcción autónoma de módulos complejos con calidad reconocida","Pruebas, documentación y plazos impecables; referente técnico del equipo"]},
+      trabajo_equipo:{low:["Compartir conocimiento técnico escaso o reactivo","No reconocido aún como referente por el equipo"],mid:["Comparte conocimiento con el equipo cuando se le solicita","Reconocimiento como referente en desarrollo progresivo"],high:["Motor activo de transmisión de conocimiento técnico en el equipo","Referente técnico claro y reconocido; gestiona personas a su cargo con eficacia"]},
+      gestion:{low:["Consolidación técnica lenta o sin búsqueda proactiva de mejora","Actitud de mejora continua poco presente en el día a día"],mid:["Consolidación técnica progresiva; mejora continua en desarrollo","Mejora continua presente aunque no siempre estructurada"],high:["Consolidación técnica sólida y sistemática; referente de mejora en el equipo","Actitud proactiva de mejora continua reconocida por responsables y equipo"]},
+      interlocucion:{low:["Conocimiento de necesidades del cliente superficial para su nivel","Propuestas técnicas competitivas escasas o sin iniciativa propia"],mid:["Conoce las necesidades del cliente en su ámbito con margen de mayor profundidad","Participa en propuestas técnicas con orientación; mejoras competitivas en desarrollo"],high:["Conocimiento profundo de las necesidades del cliente en su área","Propone mejoras técnicas competitivas de forma proactiva y con impacto reconocido"]},
+      conocimiento_tecnico:{low:["Conocimiento tecnológico insuficiente para su nivel de Systems Engineer","Escasa búsqueda de formación técnica complementaria"],mid:["Conocimiento tecnológico en consolidación con progreso visible","Busca formación técnica con cierta proactividad; dominio en desarrollo"],high:["Dominio tecnológico sólido y actualizado; referente técnico del equipo","Búsqueda proactiva de conocimiento y dominio reconocido de herramientas"]}
+    }
+  },
+  "Sr Systems Engineer": {
+    weights: {capacidad_analitica:0.15,excelencia_entrega:0.20,trabajo_equipo:0.20,gestion:0.15,interlocucion:0.10,conocimiento_tecnico:0.20},
+    criteria: {
+      capacidad_analitica:["Realiza el diseño técnico y funcional de módulos del sistema de manera autónoma; identifica y propone soluciones técnicas","Analiza y diseña la resolución de incidencias y resuelve las más críticas; identifica y analiza cambios de alcance"],
+      excelencia_entrega:["Realiza la construcción de módulos complejos y apoya técnicamente a las personas con menos experiencia","Diseña y ejecuta las pruebas integradas; revisa las pruebas unitarias y los manuales y documentación"],
+      trabajo_equipo:["Contribuye a generar un clima de colaboración; el equipo lo reconoce como referente técnico","Establece objetivos y prioridades claros a las personas a su cargo; conoce sus capacidades y distribuye tareas acordes"],
+      gestion:["Demuestra un conocimiento profundo de las funcionalidades del producto/servicio en que desarrolla su actividad","Participa en las iniciativas de desarrollo de su práctica y fomenta la reutilización en su ámbito de actuación"],
+      interlocucion:["Conoce los requerimientos y necesidades del cliente; participa y apoya en la elaboración de la propuesta técnica","Propone mejoras técnicas que aportan un conocimiento profundo del producto/servicio ofrecido"],
+      conocimiento_tecnico:["Domina los conocimientos técnicos con los que trabaja demostrando sólidos conocimientos tecnológicos","Conoce y analiza los productos y tecnologías existentes en el mercado; tiene actitud proactiva de mejora continua"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["Diseño técnico autónomo con gaps en módulos de alta complejidad","Resolución de incidencias críticas con dificultades frecuentes"],mid:["Diseño técnico autónomo correcto; incidencias críticas con apoyo ocasional","Propuestas técnicas correctas en contextos conocidos con margen de mejora"],high:["Diseño técnico autónomo y de alta calidad en módulos complejos","Resolución autónoma de incidencias críticas reconocida por el equipo"]},
+      excelencia_entrega:{low:["Construcción de módulos complejos con errores o retrasos frecuentes","Pruebas integradas y documentación con calidad insuficiente"],mid:["Construcción de módulos complejos correcta con supervisión puntual","Pruebas y documentación adecuadas; calidad en mejora progresiva"],high:["Construcción autónoma de módulos complejos con calidad impecable","Pruebas integradas y documentación de referencia en el equipo"]},
+      trabajo_equipo:{low:["Referente técnico no consolidado aún para el equipo","Gestión de personas a cargo con gaps en objetivos y seguimiento"],mid:["Referente técnico en desarrollo; gestión de personas correcta con margen","Clima de colaboración promovido aunque no siempre de forma proactiva"],high:["Referente técnico indiscutible; motor de colaboración en el equipo","Gestión ejemplar de personas a cargo; objetivos claros y seguimiento riguroso"]},
+      gestion:{low:["Conocimiento del producto/servicio insuficiente para su nivel","Poca participación en iniciativas de desarrollo de práctica"],mid:["Conocimiento profundo del producto en desarrollo progresivo","Participa en práctica con orientación; reutilización en crecimiento"],high:["Conocimiento profundo del producto reconocido como referente en el equipo","Iniciativas de práctica y reutilización lideradas con impacto visible"]},
+      interlocucion:{low:["Conocimiento de necesidades del cliente superficial para Sr Systems Engineer","Propuestas técnicas sin la profundidad esperada para su nivel"],mid:["Conocimiento del cliente correcto; propuestas técnicas adecuadas con apoyo","Participación en propuestas con valor añadido en contextos conocidos"],high:["Conocimiento profundo del cliente y sus necesidades técnicas","Propuestas técnicas de alta calidad que aportan ventaja competitiva real"]},
+      conocimiento_tecnico:{low:["Dominio tecnológico insuficiente para su nivel de Sr Systems Engineer","Análisis de mercado tecnológico escaso o sin iniciativa propia"],mid:["Dominio tecnológico sólido en su área principal con margen de amplitud","Analiza el mercado tecnológico con cierta profundidad; mejora en progreso"],high:["Dominio tecnológico profundo y reconocido como referente en el equipo","Análisis de mercado tecnológico de referencia; mejora continua demostrada"]}
+    }
+  },
+  "Project Leader": {
+    weights: {capacidad_analitica:0.15,excelencia_entrega:0.20,trabajo_equipo:0.20,gestion:0.20,interlocucion:0.10,conocimiento_tecnico:0.15},
+    criteria: {
+      capacidad_analitica:["Realiza la planificación detallada de los módulos o áreas del proyecto/servicio: define actividades, prioriza tareas y asigna recursos","Identifica riesgos, puntos críticos, anticipa desviaciones, define los planes de acción y realiza su seguimiento"],
+      excelencia_entrega:["Realiza el seguimiento del avance de las tareas asegurando la calidad y el cumplimiento de hitos, plazos y esfuerzos estimados","Revisa y valida el diseño funcional y técnico asegurando su coherencia; supervisa el resultado de las pruebas integradas y de usuario"],
+      trabajo_equipo:["Se ocupa del desarrollo de las personas de su equipo: identifica áreas de mejora y facilita el acceso a la formación necesaria","Contribuye a generar un clima de colaboración en el equipo; el equipo lo reconoce como persona de referencia"],
+      gestion:["Asegura el uso correcto de las metodologías, procedimientos y herramientas en el ámbito de los procesos productivos","Fomenta la reutilización, buenas prácticas y lecciones aprendidas en las operaciones y grupos tecnológicos donde colabora"],
+      interlocucion:["Conoce los requerimientos y necesidades del cliente; apoya al mercado/entrega en la gestión del cliente en aspectos técnicos","Participa y apoya en la elaboración de la propuesta técnica con conocimiento profundo del producto/servicio"],
+      conocimiento_tecnico:["Demuestra un conocimiento profundo de las funcionalidades del producto/servicio en que desarrolla su actividad","Domina los conocimientos técnicos con los que trabaja y demuestra sólidos conocimientos tecnológicos"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["Planificación detallada con gaps en actividades, recursos o plazos","Identificación y seguimiento de riesgos insuficiente para su nivel"],mid:["Planificación detallada correcta con margen de mayor anticipación","Identifica riesgos y hace seguimiento con apoyo ocasional del responsable"],high:["Planificación detallada impecable y autónoma; referente en el equipo","Anticipa riesgos con antelación y planes de acción de alto impacto"]},
+      excelencia_entrega:{low:["Seguimiento de tareas con gaps en hitos o calidad frecuentes","Revisión del diseño funcional y técnico con errores o incompleta"],mid:["Seguimiento correcto de tareas; revisión del diseño adecuada con supervisión","Hitos y calidad cumplidos habitualmente con apoyo puntual del responsable"],high:["Seguimiento impecable; hitos, calidad y plazos siempre asegurados","Revisión del diseño técnico de referencia; detecta incoherencias con anticipación"]},
+      trabajo_equipo:{low:["Desarrollo de las personas del equipo con poca atención o sistematización","No reconocido aún como referente claro por el equipo"],mid:["Desarrollo del equipo presente aunque no siempre estructurado","Referente en desarrollo; clima de colaboración promovido activamente"],high:["Desarrollo del equipo sistemático y reconocido por las personas a su cargo","Referente indiscutible; motor de colaboración y formación en el equipo"]},
+      gestion:{low:["Metodologías y herramientas no aseguradas en el equipo con consistencia","Reutilización y buenas prácticas promovidas de forma insuficiente"],mid:["Metodologías aseguradas con recordatorios; reutilización en desarrollo","Buenas prácticas promovidas activamente con impacto creciente"],high:["Metodologías y herramientas aseguradas de forma autónoma y rigurosa","Referente en reutilización y buenas prácticas; lecciones aprendidas sistematizadas"]},
+      interlocucion:{low:["Conocimiento del cliente superficial para su nivel de Project Leader","Participación en propuestas técnicas insuficiente o sin valor añadido claro"],mid:["Conocimiento del cliente correcto; apoyo en gestión con valor añadido","Propuestas técnicas con aportación real aunque con margen de profundidad"],high:["Conocimiento profundo del cliente; gestión técnica reconocida por el mercado","Propuestas técnicas de alta calidad que aportan diferenciación real"]},
+      conocimiento_tecnico:{low:["Conocimiento del producto/servicio insuficiente para su nivel","Dominio tecnológico con gaps para un Project Leader"],mid:["Conocimiento profundo del producto en desarrollo progresivo","Dominio tecnológico sólido en su área principal con margen de ampliación"],high:["Conocimiento profundo del producto reconocido por el equipo y la dirección","Dominio tecnológico impecable; referente técnico en el proyecto/servicio"]}
+    }
+  },
+  "Project Manager TO": {
+    weights: {capacidad_analitica:0.15,excelencia_entrega:0.20,trabajo_equipo:0.20,gestion:0.20,interlocucion:0.15,conocimiento_tecnico:0.10},
+    criteria: {
+      capacidad_analitica:["Establece el enfoque y el plan de trabajo del proyecto/servicio; anticipa riesgos, impactos y desviaciones en los planes de trabajo","Supervisa el avance del trabajo y de los resultados en el cumplimiento de fechas y calidad del producto"],
+      excelencia_entrega:["Asegura la implantación y el uso correcto de las metodologías, procedimientos y herramientas; fomenta la reutilización","Se responsabiliza del éxito del proyecto buscando innovar y aportar soluciones de alto valor para el cliente"],
+      trabajo_equipo:["Crea equipo: traslada la visión del proyecto, genera entusiasmo, compromiso y sentido de pertenencia","Se ocupa del desarrollo de las personas, incrementando su grado de autonomía y proporcionando feedback continuo"],
+      gestion:["Gestiona el presupuesto del proyecto, demuestra fiabilidad en la información económica y valora los riesgos","Planifica y gestiona eficazmente los recursos, el material y las infraestructuras necesarias para realizar el proyecto"],
+      interlocucion:["Identifica los aspectos clave en la información y necesidades del cliente; apoya al mercado/entrega en la gestión del cliente","Colabora en la elaboración de propuestas técnicas aportando conocimiento profundo del producto/servicio"],
+      conocimiento_tecnico:["Demuestra un conocimiento profundo de las herramientas/tecnologías con las que trabaja","Identifica cambios a introducir en los productos/servicios que signifiquen una mejora para el cliente y/o la compañía"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["Plan de trabajo con gaps en enfoque o anticipación de riesgos","Supervisión del avance con incidencias o hitos no asegurados"],mid:["Plan de trabajo correcto; anticipación de riesgos con apoyo ocasional","Supervisión del avance adecuada con margen de mayor proactividad"],high:["Plan de trabajo impecable y referente; anticipación de riesgos excelente","Supervisión del avance sistemática y de alta calidad reconocida"]},
+      excelencia_entrega:{low:["Metodologías y herramientas no aseguradas en el proyecto con consistencia","Éxito del proyecto no siempre asegurado; innovación escasa"],mid:["Metodologías aseguradas con recordatorios; éxito del proyecto habitual","Innovación presente aunque no siempre de alto impacto"],high:["Metodologías impecablemente aseguradas; referente de excelencia en el proyecto","Éxito del proyecto sistemático; innovación de alto valor reconocida por el cliente"]},
+      trabajo_equipo:{low:["Visión del proyecto no trasladada con claridad al equipo","Desarrollo de personas con gaps en autonomía o feedback"],mid:["Visión trasladada correctamente; desarrollo de personas en progreso","Feedback regular aunque no siempre estructurado o de alto impacto"],high:["Líder reconocido; visión y entusiasmo transmitidos con naturalidad","Desarrollo de personas sistemático y de alto impacto reconocido por el equipo"]},
+      gestion:{low:["Gestión presupuestaria con gaps o fiabilidad mejorable","Planificación de recursos con inconsistencias frecuentes"],mid:["Gestión presupuestaria correcta con supervisión; recursos bien planificados","Fiabilidad económica en desarrollo; planificación adecuada con margen"],high:["Gestión presupuestaria impecable y reconocida por la dirección","Planificación de recursos óptima; referente en gestión económica del proyecto"]},
+      interlocucion:{low:["Gestión del cliente con gaps en identificación de necesidades clave","Propuestas técnicas sin la profundidad esperada para su nivel"],mid:["Gestión del cliente correcta; propuestas técnicas adecuadas con apoyo","Aspectos clave del cliente identificados habitualmente con margen"],high:["Gestión del cliente de alto nivel; necesidades identificadas con precisión","Propuestas técnicas de alta calidad que generan confianza y nuevo negocio"]},
+      conocimiento_tecnico:{low:["Conocimiento tecnológico insuficiente para un Project Manager TO","Poca identificación de mejoras en productos/servicios"],mid:["Conocimiento tecnológico sólido; mejoras identificadas con cierta frecuencia","Conocimiento del producto en desarrollo; valor añadido en crecimiento"],high:["Conocimiento tecnológico profundo reconocido por el equipo y la dirección","Identificación sistemática de mejoras de alto valor para el cliente"]}
+    }
+  },
+  "Manager TO": {
+    weights: {capacidad_analitica:0.15,excelencia_entrega:0.15,trabajo_equipo:0.20,gestion:0.25,interlocucion:0.15,conocimiento_tecnico:0.10},
+    criteria: {
+      capacidad_analitica:["Establece el enfoque y planes de trabajo de los proyectos/servicios de su ámbito; asegura la implantación y uso correcto de metodologías","Anticipa riesgos, impactos y desviaciones en los planes y los reelabora para asegurar la consecución de los objetivos previstos"],
+      excelencia_entrega:["Supervisa el avance del trabajo y de los resultados asegurando que el resultado final responde a los requerimientos recibidos","Participa activamente en el desarrollo de su práctica y lidera iniciativas para mejorar la gestión del conocimiento y la reutilización"],
+      trabajo_equipo:["Crea equipo: traslada una visión de proyecto y unidad, genera entusiasmo, compromiso y sentido de pertenencia","Se ocupa del desarrollo profesional de las personas estableciendo objetivos y prioridades; gestiona la diversidad en el equipo"],
+      gestion:["Gestiona los presupuestos, demuestra fiabilidad en la información económica y valora los riesgos de los proyectos a su cargo","Planifica y gestiona eficazmente los recursos a medio/largo plazo; realiza seguimiento riguroso de la rentabilidad de su proyecto"],
+      interlocucion:["Identifica los aspectos clave en la información y necesidades del cliente; apoya al mercado/entrega en la gestión del cliente","Colabora en la elaboración de propuestas técnicas y valora los riesgos técnicos y de costes de las propuestas"],
+      conocimiento_tecnico:["Demuestra un conocimiento profundo de las herramientas/tecnologías con las que trabaja y del producto/servicio en que desarrolla su actividad","Conoce los productos y tecnologías en el mercado, analizando su recorrido y si se pueden incorporar en el offering de la compañía"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["Planes de trabajo con gaps en enfoque o aseguramiento de metodologías","Anticipación de riesgos insuficiente para su nivel de Manager TO"],mid:["Planes de trabajo correctos; metodologías aseguradas con supervisión ocasional","Anticipación de riesgos adecuada con margen de mayor autonomía y profundidad"],high:["Planes de trabajo impecables; metodologías lideradas con autoridad y rigor","Anticipación de riesgos excelente; planes de acción de alto impacto y autonomía"]},
+      excelencia_entrega:{low:["Supervisión del avance con gaps en calidad o resultados frecuentes","Liderazgo de iniciativas de práctica escaso o sin impacto medible"],mid:["Supervisión del avance correcta; resultados adecuados con apoyo puntual","Iniciativas de práctica presentes con impacto en desarrollo progresivo"],high:["Supervisión impecable; calidad y resultados sistemáticamente asegurados","Líder de práctica reconocido; mejora de conocimiento y reutilización de referencia"]},
+      trabajo_equipo:{low:["Visión de proyecto y unidad no trasladada con claridad al equipo","Desarrollo de personas con gaps en diversidad o estructuración"],mid:["Visión trasladada correctamente; desarrollo de personas en progreso","Gestión de la diversidad presente aunque no siempre adaptada a cada persona"],high:["Líder reconocido; visión, entusiasmo y compromiso transmitidos con naturalidad","Desarrollo de personas sistemático, adaptado y de alto impacto reconocido"]},
+      gestion:{low:["Gestión presupuestaria con gaps de fiabilidad o rentabilidad mejorable","Planificación de recursos a medio/largo plazo con inconsistencias frecuentes"],mid:["Gestión presupuestaria correcta; planificación de recursos adecuada con margen","Fiabilidad económica en desarrollo; rentabilidad seguida con cierta profundidad"],high:["Gestión presupuestaria impecable y referente en la dirección","Planificación de recursos óptima; seguimiento de rentabilidad de alto nivel"]},
+      interlocucion:{low:["Gestión del cliente con gaps en necesidades clave","Propuestas técnicas sin valoración de riesgos suficiente"],mid:["Gestión del cliente correcta; propuestas con valoración de riesgos adecuada","Aspectos clave del cliente identificados habitualmente con margen de profundidad"],high:["Gestión del cliente de alto nivel; identificación precisa de necesidades complejas","Propuestas técnicas de calidad con valoración de riesgos rigurosa y diferencial"]},
+      conocimiento_tecnico:{low:["Conocimiento tecnológico insuficiente para un Manager TO","Análisis de mercado tecnológico escaso o sin iniciativa propia"],mid:["Conocimiento profundo del producto en desarrollo con progreso visible","Análisis del mercado tecnológico con cierta profundidad; offering en desarrollo"],high:["Conocimiento tecnológico profundo y actualizado reconocido por la dirección","Análisis de mercado de referencia; propuestas de offering de alto valor diferencial"]}
+    }
+  },
+  "Sr. Manager TO": {
+    weights: {capacidad_analitica:0.15,excelencia_entrega:0.15,trabajo_equipo:0.20,gestion:0.25,interlocucion:0.15,conocimiento_tecnico:0.10},
+    criteria: {
+      capacidad_analitica:["Establece el enfoque y el plan de trabajo del proyecto/servicio valorando opciones como apoyo en factorías o subcontratación","Anticipa riesgos, impactos y desviaciones y reelabora los planes para asegurar los objetivos; supervisa el avance y asegura resultados"],
+      excelencia_entrega:["Asegura la implantación y el uso correcto de metodologías, procedimientos y herramientas en las operaciones productivas","Participa activamente en el desarrollo de su práctica y lidera iniciativas para la mejora de la gestión del conocimiento y la reutilización"],
+      trabajo_equipo:["Crea equipo: traslada una visión de proyecto, unidad y compañía; procura tener preparados profesionales para futuros puestos de responsabilidad","Concilia las capacidades individuales con las necesidades de la unidad a medio plazo; se ocupa de la asignación a medio plazo de las personas"],
+      gestion:["Conoce las herramientas y tecnologías existentes en el mercado y las principales tendencias; actúa con decisión asumiendo responsabilidades","Analiza los problemas desde una visión global, integrando datos y valorando consecuencias; es riguroso en la gestión"],
+      interlocucion:["Identifica los aspectos clave en la información y necesidades del cliente; apoya al mercado/entrega en la gestión del cliente","Revisa las propuestas técnicas de su ámbito y colabora en la elaboración de propuestas técnicas complejas; revisa riesgos técnicos y de costes"],
+      conocimiento_tecnico:["Conoce en profundidad el producto/servicio en que desarrolla su actividad y las herramientas/tecnologías con las que trabaja","Conoce los productos y tecnologías en el mercado y analiza su posible incorporación en el offering de la compañía"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["Plan de trabajo con gaps en valoración de opciones estratégicas","Anticipación de riesgos y supervisión del avance insuficiente para su nivel"],mid:["Plan de trabajo correcto; opciones estratégicas valoradas con apoyo","Anticipación de riesgos adecuada; supervisión del avance sólida con margen"],high:["Plan de trabajo impecable con visión estratégica y opciones bien valoradas","Anticipación de riesgos excelente; supervisión y resultados de referencia para la dirección"]},
+      excelencia_entrega:{low:["Metodologías no aseguradas con la consistencia esperada para su nivel","Liderazgo de iniciativas de práctica insuficiente o sin impacto medible"],mid:["Metodologías aseguradas con supervisión ocasional; práctica con impacto creciente","Iniciativas de práctica lideradas con buenos resultados en su ámbito principal"],high:["Metodologías impecablemente aseguradas; referente de excelencia operativa","Líder de práctica de referencia en la compañía; mejora de conocimiento de alto impacto"]},
+      trabajo_equipo:{low:["Visión de compañía no trasladada con claridad al equipo","Planes de desarrollo de talento para puestos futuros sin estructurar"],mid:["Visión de compañía trasladada correctamente; planes de talento en desarrollo","Conciliación de capacidades y necesidades correcta con margen de mayor visión"],high:["Líder reconocido que transmite visión de compañía con naturalidad y autoridad","Planes de talento y sucesión impecables; referente en desarrollo de personas"]},
+      gestion:{low:["Visión global de los problemas insuficiente para un Sr. Manager TO","Toma de decisiones lenta o con excesiva dependencia de validación"],mid:["Visión global correcta; decisiones tomadas con autonomía en contextos conocidos","Rigor en la gestión sólido con margen de mayor anticipación y globalidad"],high:["Visión global impecable; decisiones certeras y rápidas reconocidas por la dirección","Rigor en la gestión de referencia; análisis integrador de alto impacto estratégico"]},
+      interlocucion:{low:["Gestión del cliente con gaps en necesidades complejas","Revisión de propuestas técnicas complejas con profundidad insuficiente"],mid:["Gestión del cliente correcta; revisión de propuestas adecuada con apoyo","Necesidades complejas del cliente identificadas habitualmente con margen"],high:["Gestión del cliente de alto nivel; identificación precisa de necesidades estratégicas","Revisión de propuestas complejas de referencia; riesgos identificados con rigor"]},
+      conocimiento_tecnico:{low:["Conocimiento del producto/servicio insuficiente para un Sr. Manager TO","Análisis de incorporación de tecnologías al offering escaso o sin iniciativa"],mid:["Conocimiento profundo del producto en desarrollo con progreso visible","Analiza el mercado tecnológico con buena profundidad; offering en desarrollo"],high:["Conocimiento profundo del producto reconocido por la dirección y el equipo","Análisis de tecnologías de referencia; propuestas de offering de alto valor diferencial"]}
+    }
+  },
+  // ══════════════════════════════════════
+  // CARRERA BTC
   // ══════════════════════════════════════
   "Senior Manager": {
     weights: {capacidad_analitica:0.10,excelencia_entrega:0.20,trabajo_equipo:0.20,gestion:0.20,interlocucion:0.20,conocimiento_tecnico:0.10},
@@ -532,6 +687,19 @@ const CAREER_CONFIG = {
       "Expert":              { maxGrado: 1 },
       "Sr. Expert":          { maxGrado: 1 },
       "Sr. Practice Manager":{ maxGrado: 1 }
+    }
+  },
+  "TO": {
+    label: "TO — Technology Operations",
+    roles: {
+      "Systems Technician":  { maxGrado: 2 },
+      "Jr Systems Engineer": { maxGrado: 2 },
+      "Systems Engineer":    { maxGrado: 3 },
+      "Sr Systems Engineer": { maxGrado: 3 },
+      "Project Leader":      { maxGrado: 3 },
+      "Project Manager TO":  { maxGrado: 1 },
+      "Manager TO":          { maxGrado: 1 },
+      "Sr. Manager TO":      { maxGrado: 1 }
     }
   }
 };
@@ -1875,7 +2043,13 @@ function renderAdminConfig() {
     info.appendChild(el("div", {style:{fontWeight:"700",fontSize:"14px",color:"var(--text)"}}, m.Nombre));
     const subInfo = el("div", {style:{fontSize:"12px",color:"var(--faint)",marginTop:"2px",display:"flex",gap:"8px",flexWrap:"wrap"}});
     // Mostrar plan de carrera + rol + grado
-    const planLabel = m.PlanCarrera === "Specialist" ? "SP" : "BTC";
+    const careerColors = {
+      "Specialist": {bg:"var(--purple-bg)", color:"var(--purple)", label:"SP"},
+      "TO":         {bg:"#FFF3E0",          color:"#E65100",       label:"TO"},
+      "BTC":        {bg:"var(--indra-light)",color:"var(--indra)",  label:"BTC"}
+    };
+    const cc = careerColors[m.PlanCarrera] || careerColors["BTC"];
+    const planLabel = cc.label;
     subInfo.appendChild(document.createTextNode(`${planLabel} · ${m.Rol} · Grado ${m.Grado}`));
     if (m.EvaluaTambien) {
       const evalPill = el("span", {style:{background:"var(--blue-bg)",color:"var(--blue)",padding:"1px 8px",borderRadius:"10px",fontSize:"10px",fontWeight:"700"}}, "También evalúa");
@@ -1883,10 +2057,9 @@ function renderAdminConfig() {
     }
     // Pill de plan de carrera
     const careerPill = el("span", {style:{
-      background: m.PlanCarrera === "Specialist" ? "var(--purple-bg)" : "var(--indra-light)",
-      color: m.PlanCarrera === "Specialist" ? "var(--purple)" : "var(--indra)",
+      background: cc.bg, color: cc.color,
       padding:"1px 8px", borderRadius:"10px", fontSize:"10px", fontWeight:"700"
-    }}, m.PlanCarrera === "Specialist" ? "SP" : "BTC");
+    }}, cc.label);
     subInfo.appendChild(careerPill);
     info.appendChild(subInfo);
     item.appendChild(info);
