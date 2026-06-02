@@ -2036,16 +2036,41 @@ function renderAdminCampanas() {
     pill.textContent = c.Activa ? "● Activa" : "Inactiva";
     row.appendChild(pill);
 
+    // Botón Activar / Desactivar
     if (!c.Activa) {
-      row.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: async () => {
+      row.appendChild(el("button", {className:"btn btn-success btn-sm", onClick: async () => {
         state.loading = true; render();
         try {
           await apiRequest("SaveCampana", { method:"POST", body: JSON.stringify({ ID: c.ID, Mes: c.Mes, Anio: c.Anio, Activa: true }) });
           await loadCampanas();
         } catch(e) { alert("Error: " + e.message); }
         state.loading = false; render();
-      }}, "Activar"));
+      }}, "▶ Activar"));
+    } else {
+      row.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: async () => {
+        if (!confirm(`¿Desactivar la campaña "${c.Nombre}"?\nSeguirá existiendo en el historial pero dejará de recibir evaluaciones.`)) return;
+        state.loading = true; render();
+        try {
+          await apiRequest("SaveCampana", { method:"POST", body: JSON.stringify({ ID: c.ID, Mes: c.Mes, Anio: c.Anio, Activa: false }) });
+          await loadCampanas();
+        } catch(e) { alert("Error: " + e.message); }
+        state.loading = false; render();
+      }}, "⏸ Desactivar"));
     }
+
+    // Botón Eliminar
+    row.appendChild(el("button", {className:"btn btn-danger btn-sm", onClick: async () => {
+      const msg = c.Activa
+        ? `⚠️ "${c.Nombre}" está ACTIVA.\n\nEliminarla borrará también todas sus evaluaciones. ¿Seguro?`
+        : `¿Eliminar la campaña "${c.Nombre}"?\n\nSe borrarán todas sus evaluaciones. Esta acción no se puede deshacer.`;
+      if (!confirm(msg)) return;
+      state.loading = true; render();
+      try {
+        await apiRequest(`DeleteCampana?id=${encodeURIComponent(c.ID)}`, { method:"DELETE" });
+        await loadCampanas();
+      } catch(e) { alert("Error al eliminar: " + e.message); }
+      state.loading = false; render();
+    }}, "🗑 Eliminar"));
 
     // Ver resumen histórico
     row.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: async () => {
