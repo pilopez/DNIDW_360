@@ -1776,49 +1776,44 @@ function renderAdminConfig() {
     const rolSel = el("select");
     const gradSel = el("select");
 
-    function refreshRolOptions(plan) {
+    // ── Poblar roles según plan actual ──────────────────
+    function refreshRolOptions(plan, keepRol) {
       rolSel.innerHTML = "";
       const roles = Object.keys(CAREER_CONFIG[plan]?.roles || {});
+      const rolToSelect = roles.includes(keepRol) ? keepRol : roles[0] || "";
       roles.forEach(r => {
         const o = el("option", {value:r}, r);
-        if (f.Rol === r) o.selected = true;
+        if (r === rolToSelect) o.selected = true;
         rolSel.appendChild(o);
       });
-      // Si el rol actual no pertenece al plan, selecciona el primero
-      if (!roles.includes(f.Rol)) {
-        state.editingTeamItem.Rol = roles[0] || "";
-        if (rolSel.options.length > 0) rolSel.options[0].selected = true;
-      }
-      refreshGradoOptions(plan, rolSel.value);
+      refreshGradoOptions(plan, rolToSelect, keepRol === rolToSelect ? f.Grado : "I");
     }
 
-    function refreshGradoOptions(plan, rol) {
+    function refreshGradoOptions(plan, rol, keepGrado) {
       gradSel.innerHTML = "";
       const maxG = CAREER_CONFIG[plan]?.roles[rol]?.maxGrado || 6;
-      gradosHasta(maxG).forEach(g => {
+      const grados = gradosHasta(maxG);
+      const gradToSelect = grados.includes(keepGrado) ? keepGrado : "I";
+      grados.forEach(g => {
         const o = el("option", {value:g}, g);
-        if (f.Grado === g) o.selected = true;
+        if (g === gradToSelect) o.selected = true;
         gradSel.appendChild(o);
       });
-      if (!gradosHasta(maxG).includes(f.Grado)) {
-        state.editingTeamItem.Grado = "I";
-        gradSel.options[0].selected = true;
-      }
     }
 
+    // Al cambiar plan: recalcula roles y grados SIN rerenderizar
     planSel.addEventListener("change", e => {
-      state.editingTeamItem.PlanCarrera = e.target.value;
-      refreshRolOptions(e.target.value);
-      render();
+      refreshRolOptions(e.target.value, "");
     });
-    rolSel.addEventListener("change", e => {
-      state.editingTeamItem.Rol = e.target.value;
-      refreshGradoOptions(state.editingTeamItem.PlanCarrera || "BTC", e.target.value);
-    });
-    gradSel.addEventListener("change", e => state.editingTeamItem.Grado = e.target.value);
 
-    // Inicializar opciones
-    refreshRolOptions(f.PlanCarrera || "BTC");
+    // Al cambiar rol: recalcula grados
+    rolSel.addEventListener("change", e => {
+      const plan = planSel.value;
+      refreshGradoOptions(plan, e.target.value, "I");
+    });
+
+    // Inicializar con valores actuales del miembro
+    refreshRolOptions(f.PlanCarrera || "BTC", f.Rol || "");
 
     planRow.appendChild(planSel);
     formCard.appendChild(planRow);
@@ -1828,11 +1823,9 @@ function renderAdminConfig() {
     formCard.appendChild(row1);
 
     const row2 = el("div", {className:"form-row"});
-    gradSel.addEventListener("change", e => state.editingTeamItem.Grado = e.target.value);
 
     const emailInput2 = el("input", {type:"text", placeholder:"email@minsait.com (para login)"});
     emailInput2.value = f.Email || "";
-    emailInput2.addEventListener("input", e => state.editingTeamItem.Email = e.target.value);
     row2.appendChild(el("div", {className:"form-group"}, gradSel));
     row2.appendChild(el("div", {className:"form-group"}, emailInput2));
     formCard.appendChild(row2);
@@ -1841,14 +1834,12 @@ function renderAdminConfig() {
     const chkActivo = el("div", {className:"checkbox-row"});
     const chkA = el("input", {type:"checkbox"});
     chkA.checked = f.Activo !== false;
-    chkA.addEventListener("change", e => state.editingTeamItem.Activo = e.target.checked);
     chkActivo.appendChild(chkA);
     chkActivo.appendChild(document.createTextNode("Activo en la campaña"));
 
     const chkEvalRow = el("div", {className:"checkbox-row"});
     const chkE = el("input", {type:"checkbox"});
     chkE.checked = f.EvaluaTambien === true;
-    chkE.addEventListener("change", e => state.editingTeamItem.EvaluaTambien = e.target.checked);
     chkEvalRow.appendChild(chkE);
     chkEvalRow.appendChild(document.createTextNode("También evalúa a otros"));
     checksRow.appendChild(chkActivo);
@@ -1857,12 +1848,17 @@ function renderAdminConfig() {
 
     const btnRow = el("div", {style:{display:"flex",gap:"8px"}});
     btnRow.appendChild(el("button", {className:"btn btn-primary btn-sm", onClick: async () => {
+      // Leer valores directamente del DOM en el momento de guardar
       const item = {
-        Nombre: f.Nombre, Rol: f.Rol, Grado: f.Grado,
-        PlanCarrera: f.PlanCarrera || "BTC",
-        Activo: f.Activo !== false, EvaluaTambien: f.EvaluaTambien === true,
-        Email: f.Email || ""
+        Nombre: nameInput.value.trim(),
+        PlanCarrera: planSel.value,
+        Rol: rolSel.value,
+        Grado: gradSel.value,
+        Email: emailInput2.value.trim(),
+        Activo: chkA.checked,
+        EvaluaTambien: chkE.checked
       };
+      if (!item.Nombre) { alert("El nombre es obligatorio"); return; }
       if (f.isNew) await createListItem(CONFIG.lists.equipo, item);
       else await updateListItem(CONFIG.lists.equipo, f.ID, item);
       await loadTeam(); await loadEvaluators();
