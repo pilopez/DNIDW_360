@@ -675,10 +675,11 @@ async function loadCampanas() {
 }
 
 async function loadResponses(subjectId = null) {
-  const periodo = state.campanaActiva?.Nombre || state.campanas.find(c => c.Activa)?.Nombre || CONFIG.periodo;
+  // Usar el ID único de campaña (RowKey) como identificador, no el nombre
+  const periodoID = state.campanaActiva?.ID || state.campanas.find(c => c.Activa)?.ID || CONFIG.periodo;
   const params = subjectId
-    ? `GetRespuestas?periodo=${encodeURIComponent(periodo)}&evaluadoID=${subjectId}`
-    : `GetRespuestas?periodo=${encodeURIComponent(periodo)}`;
+    ? `GetRespuestas?periodoID=${encodeURIComponent(periodoID)}&evaluadoID=${subjectId}`
+    : `GetRespuestas?periodoID=${encodeURIComponent(periodoID)}`;
   state.responses = await apiRequest(params);
 }
 
@@ -1374,13 +1375,17 @@ function updateSubmitBtn() {
 async function submitEvaluation() {
   state.loading = true; render();
   try {
-    const periodo = state.campanaActiva?.Nombre || CONFIG.periodo;
+    const campana = state.campanaActiva;
+    const periodoID = campana?.ID || CONFIG.periodo;
+    const periodoNombre = campana?.Nombre || CONFIG.periodo;
     const item = {
       EvaluadorID: state.currentUser.id,
       EvaluadorNombre: state.currentUser.name,
       EvaluadoID: state.currentSubject.ID,
       EvaluadoNombre: state.currentSubject.Nombre,
-      Periodo: periodo,
+      PeriodoID: periodoID,
+      PeriodoNombre: periodoNombre,
+      Periodo: periodoID,
       FechaEnvio: new Date().toISOString()
     };
     DRIVER_ORDER.forEach(d => {
@@ -2079,7 +2084,7 @@ function renderAdminCampanas() {
         // Asegurar que el equipo y evaluadores están cargados para el resumen
         if (!state.team.length) await loadTeam();
         if (!state.evaluators.length) await loadEvaluators();
-        const respsCampana = await apiRequest(`GetRespuestas?periodo=${encodeURIComponent(c.Nombre)}`);
+        const respsCampana = await apiRequest(`GetRespuestas?periodoID=${encodeURIComponent(c.ID)}`);
         state.loading = false;
         renderResumenCampana(c, respsCampana);
       } catch(e) {
