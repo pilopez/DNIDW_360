@@ -407,6 +407,88 @@ const DRIVERS_CONFIG = {
       conocimiento_tecnico:{low:["Conocimiento técnico insuficiente para su nivel de responsabilidad","Dependencia de expertos en sesiones técnicas clave"],mid:["Buen conocimiento funcional de su área principal","Conocimiento técnico en desarrollo hacia niveles más avanzados"],high:["Dominio técnico sólido y reconocido","Referente en sesiones con expertos internos y externos"]}
     }
   },
+  // ══════════════════════════════════════
+  // CARRERA SPECIALIST (SP)
+  // ══════════════════════════════════════
+  "Sr. Specialist": {
+    weights: {capacidad_analitica:0.15,excelencia_entrega:0.20,trabajo_equipo:0.20,gestion:0.10,interlocucion:0.15,conocimiento_tecnico:0.20},
+    criteria: {
+      capacidad_analitica:["Asegura la viabilidad y calidad técnica, liderando la innovación en su ámbito de conocimiento","Identifica mejoras y contribuye activamente a la innovación en su área de expertise"],
+      excelencia_entrega:["Desempeña un papel activo en la parte técnica de los proyectos/productos con calidad reconocida","Participa en ponencias y foros técnicos; define y ejecuta soluciones de la compañía"],
+      trabajo_equipo:["Difunde el conocimiento de su ámbito de especialización al resto de la organización","El equipo lo reconozca como persona de referencia; fomenta y canaliza nuevas ideas"],
+      gestion:["Colabora en el diseño del plan de formación de su ámbito de expertise","Participa activamente en comunidades de aprendizaje relativas a su área"],
+      interlocucion:["El cliente comienza a reconocerlo como referente en su ámbito de expertise","Genera un clima de confianza y colaboración con el cliente; sus presentaciones son claras y profesionales"],
+      conocimiento_tecnico:["Muestra solidez técnica y dominio de los aspectos técnicos con los que trabaja","Conoce y analiza los productos y tecnologías del mercado en su ámbito de expertise"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["No asegura la calidad técnica de forma consistente","Innovación limitada en su ámbito de conocimiento"],mid:["Asegura calidad técnica con apoyo ocasional","Contribuye a la innovación aunque sin liderarla aún"],high:["Referente técnico indiscutible en su área","Lidera la innovación con reconocimiento interno y externo"]},
+      excelencia_entrega:{low:["Su papel técnico en proyectos no está suficientemente consolidado","Dificultades para participar en foros y ponencias técnicas"],mid:["Rol técnico activo aunque con margen de mejora","Participa en foros con apoyo; entregables correctos"],high:["Papel técnico ejemplar y reconocido en los proyectos","Participa con autoridad en foros y ponencias de su especialidad"]},
+      trabajo_equipo:{low:["Difusión de conocimiento limitada o reactiva","No reconocido como referente por el equipo"],mid:["Comparte conocimiento cuando se le solicita","Reconocimiento como referente en desarrollo progresivo"],high:["Motor activo de difusión de conocimiento en la organización","Referente indiscutible y generador de nuevas ideas en el equipo"]},
+      gestion:{low:["Sin participación en la planificación de formación de su área","Poca implicación en comunidades de aprendizaje"],mid:["Colabora en formación con apoyo; participa en comunidades","Plan de formación en desarrollo con orientación externa"],high:["Diseña e imparte formación de referencia en su especialidad","Líder activo en comunidades de aprendizaje internas y externas"]},
+      interlocucion:{low:["No reconocido aún como referente por el cliente","Presentaciones y comunicaciones mejorables"],mid:["Cliente empieza a reconocerlo en contextos acotados","Comunicación en desarrollo hacia interlocutores externos"],high:["Referente técnico consolidado y reconocido por el cliente","Presentaciones impecables que generan confianza y credibilidad"]},
+      conocimiento_tecnico:{low:["Conocimiento técnico insuficiente para su nivel de specialist","Poca profundidad en las tendencias del mercado de su área"],mid:["Sólido en su especialidad principal con margen de ampliación","Conocimiento de tendencias en desarrollo progresivo"],high:["Dominio técnico profundo y actualizado permanentemente","Referente en tendencias y tecnologías emergentes de su área"]}
+    }
+  },
+  "Expert": {
+    weights: {capacidad_analitica:0.15,excelencia_entrega:0.20,trabajo_equipo:0.15,gestion:0.15,interlocucion:0.15,conocimiento_tecnico:0.20},
+    criteria: {
+      capacidad_analitica:["Realiza propuestas innovadoras, definiendo y/o ejecutando nuevas soluciones o evolucionando las actuales","Anticipa riesgos, impactos y desviaciones en los planes de trabajo relativos a su ámbito de expertise"],
+      excelencia_entrega:["Da solución a requerimientos técnicos/funcionales de alta complejidad en los plazos comprometidos y con excelente calidad","Lidera proactivamente acciones de desarrollo de práctica y generación de activos diferenciales"],
+      trabajo_equipo:["Es reconocido como referente en su ámbito de conocimiento; crea entornos que fomentan la innovación","Coordina eficazmente equipos de diferentes unidades y dinamiza comunidades de aprendizaje"],
+      gestion:["Diseña el plan de formación de su ámbito de expertise y lidera su organización","Propone y lidera proactivamente acciones de desarrollo de práctica con impacto en la compañía"],
+      interlocucion:["El cliente muestra confianza en él y lo reconoce como referente en su ámbito de especialización","Elabora y defiende propuestas ante el cliente con autoridad; participa activamente en desarrollo de negocio"],
+      conocimiento_tecnico:["Posee un conocimiento amplio y diferencial en su ámbito de especialización y las tendencias de mercado","Participa activamente en la definición del offering de la compañía en su área de expertise"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["Sus propuestas no son suficientemente innovadoras para su nivel","No anticipa riesgos e impactos con la profundidad esperada"],mid:["Propuestas innovadoras en contextos conocidos con apoyo ocasional","Anticipa riesgos habituales; los más complejos con orientación"],high:["Propuestas innovadoras sistemáticas y de alto impacto","Anticipación de riesgos compleja y autónoma reconocida por la dirección"]},
+      excelencia_entrega:{low:["Dificultades en requerimientos técnicos de alta complejidad","Acciones de desarrollo de práctica limitadas o sin continuidad"],mid:["Resuelve requerimientos complejos con apoyo puntual","Lidera acciones de práctica de forma ocasional"],high:["Resuelve requerimientos de alta complejidad con excelencia sistemática","Líder referente en el desarrollo de práctica y generación de activos"]},
+      trabajo_equipo:{low:["No reconocido como referente fuera de su equipo inmediato","Dificultades para coordinar equipos de distintas unidades"],mid:["Referente en su equipo; coordinación cross en desarrollo","Dinamiza comunidades aunque sin liderazgo pleno"],high:["Referente indiscutible reconocido más allá de su unidad","Coordina y dinamiza equipos multidisciplinares con autoridad natural"]},
+      gestion:{low:["Plan de formación de su área sin diseño o sin ejecución","Acciones de práctica esporádicas o sin impacto medible"],mid:["Diseña formación con apoyo; lidera acciones puntuales de práctica","Impacto de las acciones de práctica en desarrollo progresivo"],high:["Diseño y ejecución de formación de referencia en la compañía","Acciones de práctica de alto impacto y reconocimiento generalizado"]},
+      interlocucion:{low:["El cliente aún no lo reconoce como referente claro","Dificultades para defender propuestas ante clientes exigentes"],mid:["Referente en clientes conocidos; defensa de propuestas en desarrollo","Confianza del cliente en crecimiento progresivo"],high:["Referente consolidado e indiscutible ante el cliente","Defiende propuestas complejas con autoridad y genera nuevo negocio"]},
+      conocimiento_tecnico:{low:["Conocimiento diferencial insuficiente para su nivel de expert","Poco impacto en la definición del offering de la compañía"],mid:["Conocimiento diferencial sólido en su área principal","Participa en el offering con aportaciones en desarrollo"],high:["Conocimiento diferencial de referencia y actualizado permanentemente","Influye de forma determinante en el offering de la compañía"]}
+    }
+  },
+  "Sr. Expert": {
+    weights: {capacidad_analitica:0.15,excelencia_entrega:0.15,trabajo_equipo:0.15,gestion:0.15,interlocucion:0.20,conocimiento_tecnico:0.20},
+    criteria: {
+      capacidad_analitica:["Define la estrategia de evolución tecnológica o de su ámbito de expertise con visión diferencial","Innova en la creación o definición de nuevos productos o soluciones de alto valor e impacto"],
+      excelencia_entrega:["Lidera proactivamente el desarrollo de acciones comerciales y materiales de propuestas en su área","Es capaz de aportar conocimientos y activos diferenciales y vanguardistas a la compañía"],
+      trabajo_equipo:["Lidera el despliegue de conocimiento interno a través de comunidades de práctica que cruzan fronteras organizativas y geográficas","Colabora activamente con personas de otros equipos y unidades; consigue cooperación entre todos"],
+      gestion:["Planifica la operación en su ámbito de especialización con visión global","Genera y mantiene actualizado su nivel de conocimiento para que constituya un valor diferencial frente a la competencia"],
+      interlocucion:["El cliente lo reconoce como referente de su ámbito de especialización y crea necesidades con nuevos productos diferenciales","Participa en foros de discusión y procesos de comunicación a nivel internacional sobre su área de expertise"],
+      conocimiento_tecnico:["Genera nuevo offering; conoce el entorno y las tendencias del negocio/tecnología en su ámbito","Es un referente en términos de innovación tanto dentro de la compañía como en la comunidad internacional"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["Estrategia de evolución tecnológica sin visión diferencial clara","Innovación en nuevos productos escasa para su nivel de Sr. Expert"],mid:["Estrategia tecnológica sólida aunque sin liderazgo pleno","Innovación presente pero no sistemática ni de alto impacto"],high:["Estratega tecnológico de referencia en la compañía y el sector","Innovación continua y de alto impacto reconocida interna y externamente"]},
+      excelencia_entrega:{low:["Liderazgo de acciones comerciales insuficiente para su nivel","Activos diferenciales generados con impacto limitado"],mid:["Lidera acciones comerciales en su área con apoyo ocasional","Activos diferenciales en desarrollo con valor creciente"],high:["Referente indiscutible en liderazgo comercial de su especialidad","Genera activos vanguardistas de alto impacto y reconocimiento externo"]},
+      trabajo_equipo:{low:["Comunidades de práctica lideradas con impacto limitado","Colaboración cross-unidad escasa o reactiva"],mid:["Lidera comunidades con impacto en su unidad principal","Colaboración cross-unidad activa aunque no sistemática"],high:["Comunidades de práctica de referencia que cruzan fronteras organizativas","Colaboración cross-unidad sistemática y generadora de sinergias reales"]},
+      gestion:{low:["Planificación de la operación en su área con gaps importantes","Nivel de conocimiento diferencial no mantenido actualizado"],mid:["Planificación correcta de su área con margen de profundidad","Conocimiento actualizado aunque sin sistematización plena"],high:["Planificación impecable y referente para la dirección de su área","Conocimiento diferencial actualizado y reconocido como ventaja competitiva"]},
+      interlocucion:{low:["No crea necesidades nuevas en el cliente de forma sistemática","Poca presencia en foros internacionales de su especialidad"],mid:["Referente para clientes conocidos; presencia internacional en desarrollo","Creación de necesidades en clientes en desarrollo progresivo"],high:["Crea necesidades y nuevas oportunidades de negocio con consistencia","Voz reconocida en foros internacionales de su área de especialización"]},
+      conocimiento_tecnico:{low:["Generación de nuevo offering limitada para su nivel","Visibilidad internacional como referente de innovación insuficiente"],mid:["Contribuye al offering con aportaciones sólidas en su área","Reconocido como referente en desarrollo hacia el nivel internacional"],high:["Generador habitual de nuevo offering de alto valor diferencial","Referente de innovación reconocido dentro y fuera de la compañía"]}
+    }
+  },
+  "Sr. Practice Manager": {
+    weights: {capacidad_analitica:0.15,excelencia_entrega:0.15,trabajo_equipo:0.15,gestion:0.15,interlocucion:0.20,conocimiento_tecnico:0.20},
+    criteria: {
+      capacidad_analitica:["Define la evolución tecnológica de su ámbito de especialización marcando tendencias del sector","Crea nuevas soluciones tecnológicas que contribuyen al posicionamiento de la compañía como empresa puntera"],
+      excelencia_entrega:["Impulsa proactivamente la venta y la entrega de proyectos llevando el conocimiento diferencial a la realidad del negocio","Genera un elevado impacto comercial a través de la creación de nuevas líneas de oferta"],
+      trabajo_equipo:["Es capaz de unir equipos de distintos ámbitos, dirigirlos y crear sinergias; inculca cultura de innovación continua","Busca la cohesión entre los distintos ámbitos de actividad; gestiona adecuadamente equipos de diferentes culturas"],
+      gestion:["Asegura la difusión interna de su ámbito de especialización a nivel global; es riguroso en la gestión de su presupuesto","Fomenta la creación de espacios de reflexión y mejora del offering en su ámbito de responsabilidad"],
+      interlocucion:["Tiene capacidad de relación con el cliente e influencia al más alto nivel; establece y mantiene una red de contactos externos","Destaca en sus presentaciones adaptando el tono y el mensaje a la audiencia; lidera actividades de desarrollo de negocio a nivel tecnológico"],
+      conocimiento_tecnico:["Es un referente en la innovación tecnológica tanto dentro de la compañía como en la comunidad tecnológica internacional","Participa activamente en foros nacionales e internacionales; comparte con otras unidades el conocimiento de offering y producto"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["No marca tendencias tecnológicas con la profundidad esperada para su nivel","La creación de nuevas soluciones tecnológicas es insuficiente"],mid:["Define tendencias en su área con presencia creciente en el sector","Nuevas soluciones tecnológicas en desarrollo con impacto visible"],high:["Referente absoluto en definición de tendencias tecnológicas del sector","Creación de soluciones de alto impacto reconocidas dentro y fuera de la compañía"]},
+      excelencia_entrega:{low:["Impacto comercial insuficiente para su nivel de Sr. Practice Manager","Nuevas líneas de oferta no generadas con la consistencia esperada"],mid:["Impulsa comercialmente con apoyo puntual de dirección","Nuevas líneas de oferta en creación con valor creciente"],high:["Motor comercial de la compañía en su área de especialización","Líneas de oferta de alto valor generadas y reconocidas por el mercado"]},
+      trabajo_equipo:{low:["Liderazgo cross-unidad insuficiente; poca cohesión generada","Cultura de innovación no implantada en los equipos a su cargo"],mid:["Lidera equipos cross-unidad con buenos resultados en contextos conocidos","Cultura de innovación en implantación progresiva en su área"],high:["Líder reconocido de equipos de alto rendimiento y diversidad cultural","Cultura de innovación continua instalada y generadora de resultados"]},
+      gestion:{low:["Difusión interna de su especialización limitada","Gestión presupuestaria con gaps para su nivel"],mid:["Difusión interna sólida; gestión presupuestaria correcta","Espacios de reflexión y mejora de offering en desarrollo"],high:["Difusión global impecable y referente en la compañía","Gestión presupuestaria excelente; spaces de innovación de alto impacto"]},
+      interlocucion:{low:["Influencia limitada al más alto nivel del cliente","Red de contactos externos insuficiente para su nivel"],mid:["Buena influencia en clientes actuales; red en desarrollo","Presentaciones de alto nivel aunque con margen de perfeccionamiento"],high:["Influencia máxima al más alto nivel en clientes estratégicos","Red de contactos externa sólida y generadora de oportunidades de negocio"]},
+      conocimiento_tecnico:{low:["Visibilidad como referente de innovación tecnológica internacional limitada","Poca participación en foros nacionales e internacionales de relevancia"],mid:["Referente en crecimiento progresivo hacia la comunidad internacional","Participación en foros con presencia creciente"],high:["Referente de innovación tecnológica reconocido a nivel internacional","Participación activa y de autoridad en los foros de mayor relevancia del sector"]}
+    }
+  },
+  // ══════════════════════════════════════
+  // CONTINUACIÓN BTC
+  // ══════════════════════════════════════
   "Senior Manager": {
     weights: {capacidad_analitica:0.10,excelencia_entrega:0.20,trabajo_equipo:0.20,gestion:0.20,interlocucion:0.20,conocimiento_tecnico:0.10},
     criteria: {
@@ -427,6 +509,38 @@ const DRIVERS_CONFIG = {
     }
   }
 };
+
+// ═══════════════════════════════════════════════════════
+// CAREER CONFIG — Roles y grados por plan de carrera
+// ═══════════════════════════════════════════════════════
+const CAREER_CONFIG = {
+  "BTC": {
+    label: "BTC — Business Technology & Process Consulting",
+    roles: {
+      "Analyst":          { maxGrado: 4 },
+      "Consultant":       { maxGrado: 4 },
+      "Senior Consultant":{ maxGrado: 6 },
+      "Project Manager":  { maxGrado: 4 },
+      "Manager":          { maxGrado: 4 },
+      "Senior Manager":   { maxGrado: 6 }
+    }
+  },
+  "Specialist": {
+    label: "SP — Specialist",
+    roles: {
+      "Sr. Specialist":      { maxGrado: 3 },
+      "Expert":              { maxGrado: 1 },
+      "Sr. Expert":          { maxGrado: 1 },
+      "Sr. Practice Manager":{ maxGrado: 1 }
+    }
+  }
+};
+
+// Genera array de grados romanos hasta N
+function gradosHasta(n) {
+  const romanos = ["I","II","III","IV","V","VI"];
+  return romanos.slice(0, n);
+}
 
 // ═══════════════════════════════════════════════════════
 // STATE
@@ -493,7 +607,11 @@ async function getCurrentUser() {
 
 // ─── DRIVER CONFIG con overrides personalizados ───────────
 function getDriverConfig(subject) {
-  const base = DRIVERS_CONFIG[subject.Rol] || DRIVERS_CONFIG["Senior Consultant"];
+  // Fallback: si el rol no existe en config, usar el más cercano según carrera
+  const defaultFallback = subject.PlanCarrera === "Specialist"
+    ? "Sr. Specialist"
+    : "Senior Consultant";
+  const base = DRIVERS_CONFIG[subject.Rol] || DRIVERS_CONFIG[defaultFallback];
   const overrides = state.configDrivers[subject.ID] || {};
   if (!Object.keys(overrides).length) return base;
 
@@ -1635,28 +1753,76 @@ function renderAdminConfig() {
     const formCard = el("div", {className:"card card-blue", style:{marginBottom:"12px"}});
     formCard.appendChild(el("div", {className:"section-label"}, f.isNew ? "Nuevo miembro" : "Editar miembro"));
 
+    // ── Plan de Carrera ──────────────────────────────────
+    const planRow = el("div", {className:"form-group"});
+    planRow.appendChild(el("label", {className:"form-label"}, "Plan de Carrera"));
+    const planSel = el("select");
+    Object.entries(CAREER_CONFIG).forEach(([key, cfg]) => {
+      const o = el("option", {value:key}, cfg.label);
+      if ((f.PlanCarrera || "BTC") === key) o.selected = true;
+      planSel.appendChild(o);
+    });
+
     const row1 = el("div", {className:"form-row"});
     const nameInput = el("input", {type:"text", placeholder:"Nombre completo"});
     nameInput.value = f.Nombre || "";
     nameInput.addEventListener("input", e => state.editingTeamItem.Nombre = e.target.value);
+
     const rolSel = el("select");
-    ["Analyst","Consultant","Senior Consultant","Project Manager","Manager","Senior Manager"].forEach(r => {
-      const o = el("option", {value:r}, r);
-      if (f.Rol === r) o.selected = true;
-      rolSel.appendChild(o);
+    const gradSel = el("select");
+
+    function refreshRolOptions(plan) {
+      rolSel.innerHTML = "";
+      const roles = Object.keys(CAREER_CONFIG[plan]?.roles || {});
+      roles.forEach(r => {
+        const o = el("option", {value:r}, r);
+        if (f.Rol === r) o.selected = true;
+        rolSel.appendChild(o);
+      });
+      // Si el rol actual no pertenece al plan, selecciona el primero
+      if (!roles.includes(f.Rol)) {
+        state.editingTeamItem.Rol = roles[0] || "";
+        if (rolSel.options.length > 0) rolSel.options[0].selected = true;
+      }
+      refreshGradoOptions(plan, rolSel.value);
+    }
+
+    function refreshGradoOptions(plan, rol) {
+      gradSel.innerHTML = "";
+      const maxG = CAREER_CONFIG[plan]?.roles[rol]?.maxGrado || 6;
+      gradosHasta(maxG).forEach(g => {
+        const o = el("option", {value:g}, g);
+        if (f.Grado === g) o.selected = true;
+        gradSel.appendChild(o);
+      });
+      if (!gradosHasta(maxG).includes(f.Grado)) {
+        state.editingTeamItem.Grado = "I";
+        gradSel.options[0].selected = true;
+      }
+    }
+
+    planSel.addEventListener("change", e => {
+      state.editingTeamItem.PlanCarrera = e.target.value;
+      refreshRolOptions(e.target.value);
+      render();
     });
-    rolSel.addEventListener("change", e => state.editingTeamItem.Rol = e.target.value);
+    rolSel.addEventListener("change", e => {
+      state.editingTeamItem.Rol = e.target.value;
+      refreshGradoOptions(state.editingTeamItem.PlanCarrera || "BTC", e.target.value);
+    });
+    gradSel.addEventListener("change", e => state.editingTeamItem.Grado = e.target.value);
+
+    // Inicializar opciones
+    refreshRolOptions(f.PlanCarrera || "BTC");
+
+    planRow.appendChild(planSel);
+    formCard.appendChild(planRow);
+
     row1.appendChild(el("div", {className:"form-group"}, nameInput));
     row1.appendChild(el("div", {className:"form-group"}, rolSel));
     formCard.appendChild(row1);
 
     const row2 = el("div", {className:"form-row"});
-    const gradSel = el("select");
-    ["I","II","III","IV","V","VI"].forEach(g => {
-      const o = el("option", {value:g}, g);
-      if (f.Grado === g) o.selected = true;
-      gradSel.appendChild(o);
-    });
     gradSel.addEventListener("change", e => state.editingTeamItem.Grado = e.target.value);
 
     const emailInput2 = el("input", {type:"text", placeholder:"email@minsait.com (para login)"});
@@ -1688,6 +1854,7 @@ function renderAdminConfig() {
     btnRow.appendChild(el("button", {className:"btn btn-primary btn-sm", onClick: async () => {
       const item = {
         Nombre: f.Nombre, Rol: f.Rol, Grado: f.Grado,
+        PlanCarrera: f.PlanCarrera || "BTC",
         Activo: f.Activo !== false, EvaluaTambien: f.EvaluaTambien === true,
         Email: f.Email || ""
       };
@@ -1706,11 +1873,20 @@ function renderAdminConfig() {
     const info = el("div", {style:{flex:"1"}});
     info.appendChild(el("div", {style:{fontWeight:"700",fontSize:"14px",color:"var(--text)"}}, m.Nombre));
     const subInfo = el("div", {style:{fontSize:"12px",color:"var(--faint)",marginTop:"2px",display:"flex",gap:"8px",flexWrap:"wrap"}});
-    subInfo.appendChild(document.createTextNode(`${m.Rol} · Grado ${m.Grado}`));
+    // Mostrar plan de carrera + rol + grado
+    const planLabel = m.PlanCarrera === "Specialist" ? "SP" : "BTC";
+    subInfo.appendChild(document.createTextNode(`${planLabel} · ${m.Rol} · Grado ${m.Grado}`));
     if (m.EvaluaTambien) {
       const evalPill = el("span", {style:{background:"var(--blue-bg)",color:"var(--blue)",padding:"1px 8px",borderRadius:"10px",fontSize:"10px",fontWeight:"700"}}, "También evalúa");
       subInfo.appendChild(evalPill);
     }
+    // Pill de plan de carrera
+    const careerPill = el("span", {style:{
+      background: m.PlanCarrera === "Specialist" ? "var(--purple-bg)" : "var(--indra-light)",
+      color: m.PlanCarrera === "Specialist" ? "var(--purple)" : "var(--indra)",
+      padding:"1px 8px", borderRadius:"10px", fontSize:"10px", fontWeight:"700"
+    }}, m.PlanCarrera === "Specialist" ? "SP" : "BTC");
+    subInfo.appendChild(careerPill);
     info.appendChild(subInfo);
     item.appendChild(info);
     const activePill = el("span", {className:"pill"});
@@ -1787,78 +1963,6 @@ function renderAdminConfig() {
 }
 
 
-
-  if (state.editingTeamItem) {
-    const f = state.editingTeamItem;
-    const formCard = el("div", {className:"card card-blue", style:{marginBottom:"12px"}});
-    formCard.appendChild(el("div", {className:"section-label"}, f.isNew ? "Nuevo miembro" : "Editar miembro"));
-    const row1 = el("div", {className:"form-row"});
-    const nameInput = el("input", {type:"text", placeholder:"Nombre completo"});
-    nameInput.value = f.Nombre || "";
-    nameInput.addEventListener("input", e => state.editingTeamItem.Nombre = e.target.value);
-    const rolSel = el("select");
-    ["Analyst","Consultant","Senior Consultant","Project Manager","Manager","Senior Manager"].forEach(r => {
-      const o = el("option", {value:r}, r);
-      if (f.Rol === r) o.selected = true;
-      rolSel.appendChild(o);
-    });
-    rolSel.addEventListener("change", e => state.editingTeamItem.Rol = e.target.value);
-    row1.appendChild(el("div", {className:"form-group"}, nameInput));
-    row1.appendChild(el("div", {className:"form-group"}, rolSel));
-    formCard.appendChild(row1);
-
-    const row2 = el("div", {className:"form-row"});
-    const gradSel = el("select");
-    ["I","II","III","IV","V","VI"].forEach(g => {
-      const o = el("option", {value:g}, g);
-      if (f.Grado === g) o.selected = true;
-      gradSel.appendChild(o);
-    });
-    gradSel.addEventListener("change", e => state.editingTeamItem.Grado = e.target.value);
-    const checkRow = el("div", {className:"checkbox-row"});
-    const chk = el("input", {type:"checkbox"});
-    chk.checked = f.Activo !== false;
-    chk.addEventListener("change", e => state.editingTeamItem.Activo = e.target.checked);
-    checkRow.appendChild(chk);
-    checkRow.appendChild(document.createTextNode("Activo en la campaña"));
-    row2.appendChild(el("div", {className:"form-group"}, gradSel));
-    row2.appendChild(el("div", {className:"form-group"}, checkRow));
-    formCard.appendChild(row2);
-
-    const btnRow = el("div", {style:{display:"flex",gap:"8px"}});
-    btnRow.appendChild(el("button", {className:"btn btn-primary btn-sm", onClick: async () => {
-      const item = { Nombre: f.Nombre, Rol: f.Rol, Grado: f.Grado, Activo: f.Activo !== false, EvaluaTambien: f.EvaluaTambien === true, Email: f.Email || "" };
-      if (f.isNew) await createListItem(CONFIG.lists.equipo, item);
-      else await updateListItem(CONFIG.lists.equipo, f.ID, item);
-      await loadTeam(); await loadEvaluators(); state.editingTeamItem = null; render();
-    }}, "Guardar"));
-    btnRow.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: () => { state.editingTeamItem = null; render(); }}, "Cancelar"));
-    formCard.appendChild(btnRow);
-    cont.appendChild(formCard);
-  }
-
-  state.team.forEach(m => {
-    const item = el("div", {style:{display:"flex",alignItems:"center",gap:"10px",padding:"12px 16px",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"10px",marginBottom:"6px"}});
-    const info = el("div", {style:{flex:"1"}});
-    info.appendChild(el("div", {style:{fontWeight:"700",fontSize:"14px",color:"var(--text)"}}, m.Nombre));
-    info.appendChild(el("div", {style:{fontSize:"12px",color:"var(--faint)"}}, `${m.Rol} · Grado ${m.Grado}`));
-    item.appendChild(info);
-    const activePill = el("span", {className:"pill"});
-    activePill.style.background = m.Activo ? "var(--green-bg)" : "#F1F5F9";
-    activePill.style.color = m.Activo ? "var(--green)" : "var(--faint)";
-    activePill.textContent = m.Activo ? "Activo" : "Inactivo";
-    item.appendChild(activePill);
-    item.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: () => {
-      state.editingTeamItem = {...m}; render();
-    }}, "Editar"));
-    item.appendChild(el("button", {className:"btn btn-danger btn-sm", onClick: async () => {
-      if (confirm(`¿Eliminar a ${m.Nombre}?`)) {
-        await deleteListItem(CONFIG.lists.equipo, m.ID);
-        await loadTeam(); render();
-      }
-    }}, "Eliminar"));
-    cont.appendChild(item);
-  });
 
 // ═══════════════════════════════════════════════════════
 // MAIN RENDER
