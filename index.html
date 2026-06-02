@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Evaluación 360° · DNIDW</title>
+<title>Evaluación 360° · Desarrollo de Negocio - DICW</title>
 <style>
   :root {
     --indra: #003DA5;
@@ -200,6 +200,7 @@
 const CONFIG = {
   siteUrl: "https://indra365.sharepoint.com/sites/Grp_T_DNID",
   periodo: "S2-2025",
+  equipoLabel: "Desarrollo de Negocio - DICW",
   lists: {
     equipo: "Equipo",
     evaluadores: "Evaluadores",
@@ -969,8 +970,8 @@ function renderTopbar() {
   const bar = el("div", {className: "topbar"});
   const left = el("div", {style: {display:"flex", alignItems:"center", gap:"8px"}});
   left.appendChild(el("span", {className:"topbar-title"}, "Evaluación 360°"));
-  const campana = state.campanaActiva?.Nombre || CONFIG.periodo;
-  left.appendChild(el("span", {className:"topbar-sub"}, "DNIDW · " + campana));
+  const campana = state.campanaActiva?.Nombre || "";
+  left.appendChild(el("span", {className:"topbar-sub"}, CONFIG.equipoLabel + " · " + campana));
   bar.appendChild(left);
 
   const right = el("div", {className:"topbar-right"});
@@ -1080,7 +1081,7 @@ function renderRadar(scores, role) {
 // ═══════════════════════════════════════════════════════
 function renderLogin() {
   const wrap = el("div", {className:"login-wrap"});
-  wrap.appendChild(el("div", {className:"login-badge"}, "DNIDW · " + CONFIG.periodo));
+  wrap.appendChild(el("div", {className:"login-badge"}, CONFIG.equipoLabel));
   wrap.appendChild(el("div", {className:"login-title"}, "Evaluación 360°"));
   wrap.appendChild(el("div", {className:"login-desc"}, "Sistema de evaluación continua del equipo.\nAnónimo para el evaluado. Transparente para el administrador."));
 
@@ -1169,7 +1170,7 @@ async function renderLoginStep2(email, role) {
   app.innerHTML = "";
 
   const wrap = el("div", {className:"login-wrap"});
-  wrap.appendChild(el("div", {className:"login-badge"}, "DNIDW · " + CONFIG.periodo));
+  wrap.appendChild(el("div", {className:"login-badge"}, CONFIG.equipoLabel));
   wrap.appendChild(el("div", {className:"login-title"}, "Verificación"));
   wrap.appendChild(el("div", {className:"login-desc"}, `Introduce el código de 6 dígitos enviado a\n${email}`));
 
@@ -1266,7 +1267,7 @@ async function renderLoginStep2(email, role) {
 
 function renderEvalList() {
   const cont = el("div", {className:"container"});
-  const campana = state.campanaActiva?.Nombre || CONFIG.periodo;
+  const campana = state.campanaActiva?.Nombre || "";
   cont.appendChild(el("div", {className:"page-title"}, "Hola, " + (state.currentUser?.name?.split("@")[0] || "")));
   cont.appendChild(el("div", {className:"page-sub"}, `Campaña: ${campana} · Tu identidad es anónima para el evaluado.`));
 
@@ -1588,7 +1589,7 @@ function renderDone() {
 function renderSelectSubjects() {
   const cont = el("div", {className:"container"});
   cont.appendChild(el("div", {className:"page-title"}, "¿Con quién has trabajado este semestre?"));
-  const campana = state.campanaActiva?.Nombre || CONFIG.periodo;
+  const campana = state.campanaActiva?.Nombre || "";
   cont.appendChild(el("div", {className:"page-sub"}, `Campaña: ${campana} · Selecciona solo a los compañeros con los que hayas colaborado`));
 
   const alert = el("div", {className:"alert alert-info", style:{marginBottom:"16px"}});
@@ -1649,7 +1650,7 @@ function renderSelectSubjects() {
 function renderAdminDash() {
   const cont = el("div", {className:"container-wide"});
   cont.appendChild(el("div", {className:"page-title"}, "Panel de resultados"));
-  cont.appendChild(el("div", {className:"page-sub"}, "Tiempo real · " + CONFIG.periodo));
+  cont.appendChild(el("div", {className:"page-sub"}, "Tiempo real"));
 
   const totalResp = state.responses.length;
   const totalEvals = state.evaluators.length;
@@ -1736,7 +1737,7 @@ function renderAdminReport() {
   cont.appendChild(back);
 
   cont.appendChild(el("div", {className:"page-title"}, `Informe 360° — ${subject.Nombre}`));
-  cont.appendChild(el("div", {className:"page-sub"}, `${subject.Rol} · Grado ${subject.Grado} · ${responses.length} evaluaciones · ${CONFIG.periodo}`));
+  cont.appendChild(el("div", {className:"page-sub"}, `${subject.Rol} · Grado ${subject.Grado} · ${responses.length} evaluaciones`));
 
   if (!responses.length) {
     cont.appendChild(el("div", {className:"empty"}, "Sin respuestas aún para este evaluado."));
