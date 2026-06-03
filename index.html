@@ -409,6 +409,66 @@ const DRIVERS_CONFIG = {
     }
   },
   // ══════════════════════════════════════
+  // NIVEL DIRECCIÓN — común a las 3 carreras
+  // ══════════════════════════════════════
+  "Director BTC": {
+    weights: {capacidad_analitica:0.20,excelencia_entrega:0.15,trabajo_equipo:0.15,gestion:0.20,interlocucion:0.20,conocimiento_tecnico:0.10},
+    criteria: {
+      capacidad_analitica:["Define la estrategia de negocio de su unidad, alinea recursos y objetivos con la visión de la compañía a medio y largo plazo","Tiene visión estratégica e innovadora y la aplica para evolucionar incrementalmente el negocio; anticipa tendencias del mercado y el sector"],
+      excelencia_entrega:["Controla el presupuesto y los objetivos de negocio de su área; asegura la rentabilidad y los ingresos comprometidos con la organización","Construye oferta diferencial, impulsa la innovación y transforma el modelo de negocio generando crecimiento sostenible"],
+      trabajo_equipo:["Conforma y evoluciona equipos de alto rendimiento; fomenta el sentido de pertenencia y desarrolla el talento directivo en su organización","Busca la cohesión con el resto de ámbitos de la compañía; promueve la colaboración transversal entre unidades y disciplinas"],
+      gestion:["Negocia con el cliente las condiciones estratégicas y el contrato; gestiona relaciones al más alto nivel con clientes, socios e instituciones","Planifica y gestiona los recursos a medio y largo plazo — gestión de pirámide — asegurando la sostenibilidad y el desarrollo de la organización"],
+      interlocucion:["Conoce en profundidad la estrategia de los clientes, la evolución sectorial y el marco competitivo; genera relaciones sólidas y duraderas al más alto nivel","Posee un nivel de interlocución ejecutivo; representa a la compañía ante clientes estratégicos, socios y en foros de referencia del sector"],
+      conocimiento_tecnico:["Domina el portfolio de soluciones y servicios de la compañía; es referente en el mercado en su ámbito de actividad","Impulsa la generación de nuevo offering, productos y soluciones diferenciales que posicionan a la compañía en la vanguardia del sector"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["Estrategia de la unidad sin alineación clara con la visión de compañía","Anticipación de tendencias de mercado insuficiente para el nivel directivo"],mid:["Estrategia definida con alineación correcta; anticipación de tendencias en desarrollo","Visión estratégica sólida aunque con margen de mayor alcance e innovación"],high:["Estrategia de referencia alineada con la visión de compañía y generadora de valor","Anticipación de tendencias ejemplar; referente estratégico interno y externo"]},
+      excelencia_entrega:{low:["Control presupuestario con gaps de fiabilidad o rentabilidad por debajo de objetivos","Construcción de oferta diferencial insuficiente para el nivel de Director"],mid:["Control presupuestario correcto; oferta diferencial en desarrollo con impacto creciente","Rentabilidad y objetivos cumplidos habitualmente con margen de mayor ambición"],high:["Control presupuestario impecable; crecimiento sostenible y oferta diferencial de referencia","Resultados de negocio sistemáticamente superados; innovación reconocida por el mercado"]},
+      trabajo_equipo:{low:["Desarrollo del talento directivo con poca estructura o impacto limitado","Cohesión transversal con otros ámbitos de la compañía escasa o reactiva"],mid:["Equipos de alto rendimiento en construcción; cohesión transversal activa","Talento directivo en desarrollo con progreso visible; colaboración cross-unidad presente"],high:["Equipos de alto rendimiento consolidados y reconocidos en la organización","Cohesión transversal ejemplar; motor de colaboración estratégica entre ámbitos"]},
+      gestion:{low:["Gestión de relaciones al más alto nivel con gaps o sin consistencia","Planificación a largo plazo de la pirámide con inconsistencias para su nivel"],mid:["Relaciones de alto nivel correctas; planificación a largo plazo adecuada con margen","Negociación estratégica presente aunque no siempre a la altura del nivel directivo"],high:["Relaciones estratégicas de referencia generadoras de negocio sostenible","Planificación de pirámide impecable; referente en gestión estratégica de la organización"]},
+      interlocucion:{low:["Interlocución ejecutiva insuficiente para el nivel de Director BTC","Representación de la compañía ante clientes y foros mejorable"],mid:["Interlocución ejecutiva correcta; representación en desarrollo hacia mayor impacto","Relaciones con clientes estratégicos en crecimiento progresivo"],high:["Interlocución ejecutiva de referencia; voz reconocida en el sector","Representación impecable; genera confianza y oportunidades al más alto nivel"]},
+      conocimiento_tecnico:{low:["Dominio del portfolio de soluciones insuficiente para el nivel directivo","Impulso al nuevo offering escaso o sin impacto en el posicionamiento de mercado"],mid:["Portfolio dominado correctamente; impulso al offering con impacto en desarrollo","Referente de mercado en su ámbito en construcción progresiva"],high:["Referente de mercado reconocido; portfolio dominado con profundidad estratégica","Impulso al offering de alto impacto que posiciona a la compañía en la vanguardia"]}
+    }
+  },
+  "Director SP": {
+    weights: {capacidad_analitica:0.20,excelencia_entrega:0.15,trabajo_equipo:0.15,gestion:0.20,interlocucion:0.20,conocimiento_tecnico:0.10},
+    criteria: {
+      capacidad_analitica:["Define la estrategia de conocimiento y especialización de su ámbito a nivel global; marca la agenda de innovación tecnológica de la compañía","Anticipa la evolución tecnológica del sector a largo plazo; identifica nuevos dominios de especialización con potencial estratégico para la organización"],
+      excelencia_entrega:["Genera impacto comercial de alto valor a través de la creación de nuevas líneas de oferta y el posicionamiento de la compañía como referente tecnológico","Impulsa la transformación del portfolio tecnológico de la compañía; asegura que la especialización se traduce en ventaja competitiva sostenible"],
+      trabajo_equipo:["Construye y lidera comunidades de práctica de referencia que cruzan fronteras organizativas, geográficas y sectoriales","Inculca una cultura de innovación continua en toda la organización; es el máximo referente interno en su ámbito de especialización"],
+      gestion:["Asegura la difusión global del conocimiento especializado de la compañía; gestiona su presupuesto con rigor y visión estratégica","Define los estándares de excelencia técnica de la organización; lidera la planificación del talento especializado a medio y largo plazo"],
+      interlocucion:["Posee capacidad de influencia e interlocución al más alto nivel con clientes estratégicos, organismos internacionales y referentes del sector","Representa a la compañía en foros nacionales e internacionales de máximo prestigio; es voz reconocida en la comunidad tecnológica global"],
+      conocimiento_tecnico:["Es el máximo referente de innovación tecnológica de la compañía reconocido a nivel internacional; genera conocimiento diferencial de vanguardia","Define la evolución tecnológica de la organización; su conocimiento constituye una ventaja competitiva estratégica frente a la competencia"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["Agenda de innovación tecnológica sin dirección estratégica clara","Identificación de nuevos dominios de especialización insuficiente para el nivel"],mid:["Estrategia de conocimiento definida; nuevos dominios en exploración activa","Agenda de innovación presente con impacto en desarrollo hacia nivel directivo"],high:["Agenda de innovación tecnológica de referencia; visionario reconocido interna y externamente","Nuevos dominios de especialización identificados con alto impacto estratégico para la compañía"]},
+      excelencia_entrega:{low:["Impacto comercial de la especialización por debajo de lo esperado para el nivel","Transformación del portfolio tecnológico lenta o sin impacto diferencial claro"],mid:["Impacto comercial creciente; transformación del portfolio en desarrollo progresivo","Ventaja competitiva de la especialización visible aunque no totalmente consolidada"],high:["Impacto comercial máximo; portfolio transformado y posicionamiento de vanguardia reconocido","Ventaja competitiva sostenible generada por la especialización; referente del mercado"]},
+      trabajo_equipo:{low:["Comunidades de práctica de alcance limitado para el nivel de Director SP","Cultura de innovación no instalada en la organización con la profundidad esperada"],mid:["Comunidades de práctica de referencia en su ámbito principal; cultura en desarrollo","Innovación presente en la organización con impacto creciente"],high:["Comunidades de práctica globales de referencia que trascienden la organización","Cultura de innovación instalada y generadora de resultados; máximo referente interno"]},
+      gestion:{low:["Difusión global del conocimiento especializado insuficiente para su nivel","Estándares de excelencia técnica no definidos con la consistencia requerida"],mid:["Difusión global correcta; estándares en definición con impacto en desarrollo","Planificación del talento especializado adecuada con margen de mayor visión"],high:["Difusión global impecable; estándares de excelencia técnica de referencia en la compañía","Planificación del talento especializado estratégica y de alto impacto a largo plazo"]},
+      interlocucion:{low:["Influencia e interlocución al más alto nivel insuficiente para Director SP","Presencia en foros internacionales de prestigio escasa o sin impacto"],mid:["Interlocución de alto nivel correcta; presencia en foros en desarrollo","Influencia en clientes estratégicos y organismos en crecimiento progresivo"],high:["Interlocución ejecutiva de máximo nivel; voz reconocida globalmente en el sector","Presencia en foros internacionales de referencia; embajador de la compañía a nivel global"]},
+      conocimiento_tecnico:{low:["Referencia de innovación tecnológica internacional insuficiente para el nivel directivo","Conocimiento diferencial no actualizado con la frecuencia y profundidad requeridas"],mid:["Referente de innovación en crecimiento hacia el nivel internacional","Conocimiento diferencial sólido y actualizado con margen de mayor vanguardia"],high:["Máximo referente de innovación tecnológica reconocido a nivel global","Conocimiento diferencial de vanguardia que define la agenda tecnológica de la compañía"]}
+    }
+  },
+  "Director TO": {
+    weights: {capacidad_analitica:0.20,excelencia_entrega:0.15,trabajo_equipo:0.15,gestion:0.25,interlocucion:0.15,conocimiento_tecnico:0.10},
+    criteria: {
+      capacidad_analitica:["Define la estrategia operativa y tecnológica de su ámbito a largo plazo; alinea la capacidad de producción con los objetivos estratégicos de la compañía","Anticipa la evolución tecnológica y operativa del sector; identifica oportunidades de transformación que generan ventaja competitiva sostenible"],
+      excelencia_entrega:["Asegura la excelencia operativa de su organización a escala; define los estándares de calidad, eficiencia y productividad de referencia en el mercado","Impulsa la transformación e innovación en los modelos de operación y producción; garantiza la sostenibilidad económica y técnica de las operaciones"],
+      trabajo_equipo:["Construye organizaciones de alto rendimiento a escala; fomenta el compromiso, la orientación a resultados y la mejora continua en toda la estructura","Desarrolla el talento directivo de su organización a medio y largo plazo; asegura la continuidad del liderazgo y la preparación de futuros responsables"],
+      gestion:["Define y controla el presupuesto de su área asegurando la rentabilidad y los ingresos comprometidos; gestiona la planificación de recursos a escala organizacional","Actúa con rapidez y decisión tomando decisiones estratégicas certeras; analiza los problemas desde una visión global integrando datos y consecuencias a largo plazo"],
+      interlocucion:["Gestiona relaciones ejecutivas con clientes estratégicos, socios y proveedores; tiene capacidad de influencia al más alto nivel institucional y empresarial","Representa a la compañía ante clientes de referencia y en foros del sector; genera relaciones sólidas y duraderas que producen negocio sostenible"],
+      conocimiento_tecnico:["Domina el portfolio de soluciones tecnológicas y operativas de la compañía; conoce en profundidad las tendencias y la evolución del mercado en su ámbito","Impulsa la incorporación de nuevas tecnologías y metodologías al modelo operativo; define la hoja de ruta tecnológica de su organización"]
+    },
+    suggestions: {
+      capacidad_analitica:{low:["Estrategia operativa y tecnológica sin alineación clara con objetivos de compañía","Anticipación de evolución del sector insuficiente para el nivel de Director TO"],mid:["Estrategia operativa correcta con alineación en desarrollo hacia mayor ambición","Anticipación de tendencias del sector presente con margen de mayor profundidad"],high:["Estrategia operativa y tecnológica de referencia alineada con la visión de compañía","Anticipación ejemplar; referente estratégico operativo reconocido en el sector"]},
+      excelencia_entrega:{low:["Estándares de calidad y eficiencia por debajo de lo esperado para el nivel directivo","Transformación del modelo de operación lenta o sin impacto diferencial claro"],mid:["Estándares de calidad y eficiencia correctos con margen de referencia de mercado","Transformación operativa en desarrollo con impacto creciente en eficiencia"],high:["Estándares de excelencia operativa de referencia reconocidos en el mercado","Transformación del modelo de operación de alto impacto y sostenibilidad demostrada"]},
+      trabajo_equipo:{low:["Organizaciones de alto rendimiento a escala no construidas con la consistencia esperada","Desarrollo del talento directivo con poca estructura o impacto limitado"],mid:["Organizaciones de alto rendimiento en construcción con progreso visible","Talento directivo en desarrollo; continuidad del liderazgo en planificación"],high:["Organizaciones de alto rendimiento consolidadas y referente en el sector","Talento directivo impecablemente desarrollado; continuidad del liderazgo asegurada"]},
+      gestion:{low:["Control presupuestario con gaps de rentabilidad o planificación de recursos insuficiente","Toma de decisiones estratégicas lenta o sin la visión global esperada"],mid:["Control presupuestario correcto; decisiones estratégicas tomadas con autonomía habitual","Planificación de recursos a escala adecuada con margen de mayor ambición"],high:["Control presupuestario impecable; rentabilidad sistemáticamente asegurada","Decisiones estratégicas certeras y rápidas; referente en gestión global de la organización"]},
+      interlocucion:{low:["Relaciones ejecutivas con clientes estratégicos insuficientes para el nivel directivo","Representación de la compañía en foros del sector mejorable"],mid:["Relaciones ejecutivas correctas; representación en foros en desarrollo","Influencia de alto nivel en crecimiento progresivo hacia mayor impacto"],high:["Relaciones ejecutivas de referencia generadoras de negocio sostenible y de largo plazo","Representación impecable; voz reconocida en el sector que posiciona a la compañía"]},
+      conocimiento_tecnico:{low:["Portfolio tecnológico y operativo dominado de forma insuficiente para el nivel","Hoja de ruta tecnológica sin definición clara o sin impacto en la organización"],mid:["Portfolio dominado correctamente; hoja de ruta tecnológica en definición activa","Incorporación de nuevas tecnologías presente con impacto en desarrollo"],high:["Portfolio dominado con profundidad estratégica; referente tecnológico de la organización","Hoja de ruta tecnológica impecable que impulsa la ventaja competitiva de la compañía"]}
+    }
+  },
+  // ══════════════════════════════════════
   // CARRERA SPECIALIST (SP)
   // ══════════════════════════════════════
   "Sr. Specialist": {
@@ -678,7 +738,8 @@ const CAREER_CONFIG = {
       "Senior Consultant":{ maxGrado: 6 },
       "Project Manager":  { maxGrado: 4 },
       "Manager":          { maxGrado: 4 },
-      "Senior Manager":   { maxGrado: 6 }
+      "Senior Manager":   { maxGrado: 6 },
+      "Director BTC":     { maxGrado: 1 }
     }
   },
   "Specialist": {
@@ -687,7 +748,8 @@ const CAREER_CONFIG = {
       "Sr. Specialist":      { maxGrado: 3 },
       "Expert":              { maxGrado: 1 },
       "Sr. Expert":          { maxGrado: 1 },
-      "Sr. Practice Manager":{ maxGrado: 1 }
+      "Sr. Practice Manager":{ maxGrado: 1 },
+      "Director SP":         { maxGrado: 1 }
     }
   },
   "TO": {
@@ -700,7 +762,8 @@ const CAREER_CONFIG = {
       "Project Leader":      { maxGrado: 3 },
       "Project Manager TO":  { maxGrado: 1 },
       "Manager TO":          { maxGrado: 1 },
-      "Sr. Manager TO":      { maxGrado: 1 }
+      "Sr. Manager TO":      { maxGrado: 1 },
+      "Director TO":         { maxGrado: 1 }
     }
   }
 };
@@ -777,9 +840,10 @@ async function getCurrentUser() {
 // ─── DRIVER CONFIG con overrides personalizados ───────────
 function getDriverConfig(subject) {
   // Fallback: si el rol no existe en config, usar el más cercano según carrera
-  const defaultFallback = subject.PlanCarrera === "Specialist"
-    ? "Sr. Specialist"
-    : "Senior Consultant";
+  const defaultFallback =
+    subject.PlanCarrera === "Specialist" ? "Sr. Practice Manager" :
+    subject.PlanCarrera === "TO"         ? "Sr. Manager TO"       :
+    "Senior Manager";
   const base = DRIVERS_CONFIG[subject.Rol] || DRIVERS_CONFIG[defaultFallback];
   const overrides = state.configDrivers[subject.ID] || {};
   if (!Object.keys(overrides).length) return base;
