@@ -1559,7 +1559,17 @@ function renderSuggestionsSection(container, dId, cfg) {
       }
       btn.addEventListener("click", () => {
         if (!state.scores[dId]) state.scores[dId] = {};
-        state.scores[dId].pick = currentPick === s ? "" : s;
+        const picking = currentPick !== s;
+        state.scores[dId].pick = picking ? s : "";
+        // Si selecciona sugerido, lo precarga en el textarea como punto de partida
+        // pero marca que aún necesita edición manual (commentFromPick)
+        if (picking) {
+          state.scores[dId].comment = s;
+          state.scores[dId].commentFromPick = true;
+        } else {
+          state.scores[dId].comment = "";
+          state.scores[dId].commentFromPick = false;
+        }
         renderSuggestionsSection(container, dId, cfg);
         updateSubmitBtn();
       });
@@ -1569,17 +1579,25 @@ function renderSuggestionsSection(container, dId, cfg) {
   }
 
   const ta = el("textarea", {
-    placeholder: scoreVal === 5 ? "Justificación obligatoria: explica por qué es una ejecución excepcional..." : "Comentario adicional (opcional)...",
+    placeholder: scoreVal === 5
+      ? "Justificación obligatoria: explica por qué es una ejecución excepcional (puedes partir del texto sugerido y ampliar)..."
+      : "Comentario adicional (opcional)...",
     rows: "2"
   });
   ta.value = state.scores[dId]?.comment || "";
-  if (scoreVal === 5 && !state.scores[dId]?.comment && !currentPick) {
+  // Score 5: borde rojo si no hay comentario O si el comentario es exactamente el texto del pick sin editar
+  const commentVal = state.scores[dId]?.comment || "";
+  const isFromPick = state.scores[dId]?.commentFromPick === true;
+  if (scoreVal === 5 && (!commentVal || isFromPick)) {
     ta.className = "required-border";
   }
   ta.addEventListener("input", () => {
     if (!state.scores[dId]) state.scores[dId] = {};
     state.scores[dId].comment = ta.value;
+    state.scores[dId].commentFromPick = false; // El evaluador ha editado manualmente
     updateSubmitBtn();
+    // Quitar borde rojo en tiempo real cuando hay texto propio
+    ta.className = (state.scores[dId].score === 5 && !ta.value.trim()) ? "required-border" : "";
   });
   container.appendChild(ta);
 }
@@ -1588,7 +1606,8 @@ function canSubmit() {
   return DRIVER_ORDER.every(d => {
     const v = state.scores[d];
     if (!v?.score) return false;
-    if (v.score === 5 && !v.comment && !v.pick) return false;
+    // Score 5: exige comentario propio y no puede ser solo el pick sin editar
+    if (v.score === 5 && (!v.comment?.trim() || v.commentFromPick)) return false;
     return true;
   });
 }
