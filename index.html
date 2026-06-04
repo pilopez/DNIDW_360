@@ -281,6 +281,7 @@ function initSecurity(emailInput) {
 
   // ✅ admin: CONFIG hardcoded (root) O tabla Admins dinámica
   state.isAdmin = isAdminUser;
+  state.isRootAdmin = CONFIG.adminUsers.includes(email);
   return true;
 }
 
@@ -780,6 +781,7 @@ function gradosHasta(n) {
 const state = {
   view: "login",        // login | selectSubjects | evalList | evalForm | done | adminDash | adminReport | adminConfig | adminCampanas | adminConfigDrivers
   isAdmin: false,
+  isRootAdmin: false,
   currentUser: null,
   currentSubject: null,
   scores: {},
@@ -1268,6 +1270,7 @@ async function renderLoginStep2(email, role) {
         email: email
       };
       state.isAdmin = isAdminUser;
+      state.isRootAdmin = CONFIG.adminUsers.includes(email);
 
       if (role === "admin") {
         await loadCampanas();
@@ -1931,9 +1934,10 @@ function renderAdminReport() {
   });
   cont.appendChild(commCard);
 
-  // Admin-only section
-  const adminSection = el("div", {className:"admin-only"});
-  adminSection.appendChild(el("div", {className:"admin-only-title"}, "Solo visible para el administrador — Detalle por evaluador"));
+  // Admin-only section — solo visible para el administrador raíz
+  if (state.isRootAdmin) {
+    const adminSection = el("div", {className:"admin-only"});
+    adminSection.appendChild(el("div", {className:"admin-only-title"}, "Solo visible para el administrador — Detalle por evaluador"));
   responses.forEach(r => {
     const evaluator = state.evaluators.find(e => e.ID === r.EvaluadorID);
     const rRow = el("div", {className:"response-row"});
@@ -1988,6 +1992,7 @@ function renderAdminReport() {
     adminSection.appendChild(rRow);
   });
   cont.appendChild(adminSection);
+  } // end isRootAdmin
   return cont;
 }
 
