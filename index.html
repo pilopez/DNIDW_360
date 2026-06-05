@@ -1286,44 +1286,17 @@ async function renderLoginStep2(email, role) {
 
     try {
       // Validar contraseña contra Azure Tables
-      await apiRequest("VerifyCode", { method:"POST", body: JSON.stringify({ email, password }) });
+      const res = await apiRequest("VerifyCode", { method:"POST", body: JSON.stringify({ email, password }) });
+
+      // Si debe cambiar contraseña, mostrar pantalla de cambio
+      if (res.mustChangePassword) {
+        state.loading = false;
+        renderChangePassword(email, role, password);
+        return;
+      }
 
       // Login correcto
-      const isAdminUser = CONFIG.adminUsers.includes(email) || state.admins.includes(email);
-      const teamMember = state.team.find(m => (m.Email || "").toLowerCase() === email);
-      state.currentUser = {
-        id: email,
-        name: teamMember?.Nombre || email.split("@")[0],
-        email: email
-      };
-      state.isAdmin = isAdminUser;
-      state.isRootAdmin = CONFIG.adminUsers.includes(email);
-
-      if (role === "admin") {
-        await loadCampanas();
-        await loadEvaluators();
-        await loadResponses();
-        state.view = "adminDash";
-      } else {
-        await loadCampanas();
-        if (!state.campanaActiva) {
-          alert("No hay ninguna campaña de evaluación activa. Contacta con el administrador.");
-          state.loading = false; render(); return;
-        }
-        await loadEvaluators();
-        await loadResponses();
-        const hasSaved = loadSelection();
-        if (hasSaved && state.selectedSubjects.length) {
-          const validIDs = state.team.map(m => m.ID);
-          state.selectedSubjects = state.selectedSubjects.filter(id => validIDs.includes(id));
-        }
-        if (state.selectedSubjects.length > 0) {
-          state.view = "evalList";
-        } else {
-          state.selectedSubjects = [];
-          state.view = "selectSubjects";
-        }
-      }
+      await completeLogin(email, role);
     } catch(e) {
       state.loading = false;
       app.innerHTML = "";
@@ -1349,6 +1322,111 @@ async function renderLoginStep2(email, role) {
 
   app.appendChild(wrap);
   setTimeout(() => pwInput.focus(), 100);
+}
+
+async function completeLogin(email, role) {
+  const isAdminUser = CONFIG.adminUsers.includes(email) || state.admins.includes(email);
+  const teamMember = state.team.find(m => (m.Email || "").toLowerCase() === email);
+  state.currentUser = {
+    id: email,
+    name: teamMember?.Nombre || email.split("@")[0],
+    email: email
+  };
+  state.isAdmin = isAdminUser;
+  state.isRootAdmin = CONFIG.adminUsers.includes(email);
+
+  if (role === "admin") {
+    await loadCampanas();
+    await loadEvaluators();
+    await loadResponses();
+    state.view = "adminDash";
+  } else {
+    await loadCampanas();
+    if (!state.campanaActiva) {
+      alert("No hay ninguna campaña de evaluación activa. Contacta con el administrador.");
+      state.loading = false; render(); return;
+    }
+    await loadEvaluators();
+    await loadResponses();
+    const hasSaved = loadSelection();
+    if (hasSaved && state.selectedSubjects.length) {
+      const validIDs = state.team.map(m => m.ID);
+      state.selectedSubjects = state.selectedSubjects.filter(id => validIDs.includes(id));
+    }
+    if (state.selectedSubjects.length > 0) {
+      state.view = "evalList";
+    } else {
+      state.selectedSubjects = [];
+      state.view = "selectSubjects";
+    }
+  }
+}
+
+async function renderChangePassword(email, role, currentPassword) {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+
+  const wrap = el("div", {className:"login-wrap"});
+  wrap.appendChild(el("div", {className:"login-badge"}, CONFIG.equipoLabel));
+  wrap.appendChild(el("div", {className:"login-title"}, "Cambia tu contraseña"));
+  wrap.appendChild(el("div", {className:"login-desc"}, "Es tu primer acceso. Por seguridad, elige una contraseña personal."));
+
+  const infoBox = el("div", {style:{
+    background:"var(--blue-bg)", border:"1px solid var(--blue)",
+    borderRadius:"10px", padding:"12px 16px", marginBottom:"16px",
+    fontSize:"13px", color:"var(--blue)"
+  }});
+  infoBox.textContent = "Mínimo 6 caracteres. No compartas tu contraseña con nadie.";
+  wrap.appendChild(infoBox);
+
+  const pw1Wrap = el("div", {style:{marginBottom:"12px"}});
+  pw1Wrap.appendChild(el("label", {style:{display:"block",fontSize:"13px",fontWeight:"600",color:"var(--muted)",marginBottom:"6px"}}, "Nueva contraseña"));
+  const pw1 = el("input", {type:"password", placeholder:"••••••••",
+    style:{width:"100%",padding:"14px",borderRadius:"10px",border:"2px solid var(--indra)",fontSize:"16px",fontFamily:"inherit",color:"var(--text)",outline:"none",boxSizing:"border-box"}
+  });
+  pw1Wrap.appendChild(pw1);
+  wrap.appendChild(pw1Wrap);
+
+  const pw2Wrap = el("div", {style:{marginBottom:"16px"}});
+  pw2Wrap.appendChild(el("label", {style:{display:"block",fontSize:"13px",fontWeight:"600",color:"var(--muted)",marginBottom:"6px"}}, "Repite la contraseña"));
+  const pw2 = el("input", {type:"password", placeholder:"••••••••",
+    style:{width:"100%",padding:"14px",borderRadius:"10px",border:"2px solid var(--indra)",fontSize:"16px",fontFamily:"inherit",color:"var(--text)",outline:"none",boxSizing:"border-box"}
+  });
+  pw2Wrap.appendChild(pw2);
+  wrap.appendChild(pw2Wrap);
+
+  const btnChange = el("button", {className:"btn btn-primary btn-full", onClick: async () => {
+    const p1 = pw1.value.trim();
+    const p2 = pw2.value.trim();
+    if (!p1 || p1.length < 6) { alert("La contraseña debe tener al menos 6 caracteres."); return; }
+    if (p1 !== p2) { alert("Las contraseñas no coinciden."); return; }
+    if (p1 === currentPassword) { alert("La nueva contraseña no puede ser igual a la anterior."); return; }
+
+    state.loading = true;
+    app.innerHTML = "";
+    app.appendChild(el("div", {className:"loading"}, "⟳ Guardando contraseña..."));
+
+    try {
+      await apiRequest("VerifyCode", {
+        method: "POST",
+        body: JSON.stringify({ email, password: currentPassword, newPassword: p1 })
+      });
+      state.loading = false;
+      await completeLogin(email, role);
+    } catch(e) {
+      state.loading = false;
+      alert("Error al guardar: " + e.message);
+      app.innerHTML = "";
+      app.appendChild(wrap);
+    }
+    state.loading = false;
+    render();
+  }}, "Guardar y entrar →");
+
+  pw2.addEventListener("keydown", e => { if (e.key === "Enter") btnChange.click(); });
+  wrap.appendChild(btnChange);
+  app.appendChild(wrap);
+  setTimeout(() => pw1.focus(), 100);
 }
 
 function renderEvalList() {
