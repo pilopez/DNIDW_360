@@ -285,6 +285,13 @@ function initSecurity(emailInput) {
   return true;
 }
 
+function generatePassword() {
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  let pwd = "";
+  for (let i = 0; i < 8; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+  return pwd;
+}
+
 // ═══════════════════════════════════════════════════════
 // PERSISTENCIA DE SELECCIÓN (localStorage)
 // ═══════════════════════════════════════════════════════
@@ -1203,7 +1210,7 @@ function renderLogin() {
     const email = emailInput.value.trim().toLowerCase();
     if (!email || !email.includes("@")) { alert("Introduce un email válido."); return; }
 
-    // Load team+admins first to validate access
+    // Cargar equipo y admins para validar acceso
     state.loading = true; render();
     try {
       await loadAdmins();
@@ -1211,7 +1218,6 @@ function renderLogin() {
     } catch(e) {}
     state.loading = false;
 
-    // Check access before sending code
     const isAdminUser = CONFIG.adminUsers.includes(email) || state.admins.includes(email);
     const isTeamEvaluator = state.team.some(m => m.EvaluaTambien === true && (m.Email || "").toLowerCase() === email);
     const isAllowed = isAdminUser || isTeamEvaluator || (CONFIG.allowedUsers && CONFIG.allowedUsers.includes(email));
@@ -1233,23 +1239,9 @@ function renderLogin() {
       return;
     }
 
-    // Send verification code
-    state.loading = true; render();
-    try {
-      const res = await apiRequest("SendVerificationCode", {
-        method: "POST",
-        body: JSON.stringify({ email })
-      });
-      state.loading = false;
-      // Show step 2
-      state.loginEmail = email;
-      state.loginRole = role;
-      renderLoginStep2(email, role);
-    } catch(e) {
-      state.loading = false;
-      alert("Error al enviar el código: " + e.message);
-      render();
-    }
+    state.loginEmail = email;
+    state.loginRole = role;
+    renderLoginStep2(email, role);
   };
 
   const btnEval = el("button", {className:"btn btn-primary btn-full", onClick: () => sendCodeAndContinue("eval")}, "Soy evaluador — Dar feedback");
@@ -1258,7 +1250,7 @@ function renderLogin() {
   btns.appendChild(btnEval);
   btns.appendChild(btnAdmin);
   step1.appendChild(btns);
-  step1.appendChild(el("div", {style:{marginTop:"20px", fontSize:"12px", color:"var(--faint)", textAlign:"center"}}, "Recibirás un código de verificación en tu email corporativo."));
+  step1.appendChild(el("div", {style:{marginTop:"20px", fontSize:"12px", color:"var(--faint)", textAlign:"center"}}, "Introduce tu email corporativo y la contraseña de acceso a la aplicación."));
   wrap.appendChild(step1);
   return wrap;
 }
@@ -1269,31 +1261,34 @@ async function renderLoginStep2(email, role) {
 
   const wrap = el("div", {className:"login-wrap"});
   wrap.appendChild(el("div", {className:"login-badge"}, CONFIG.equipoLabel));
-  wrap.appendChild(el("div", {className:"login-title"}, "Verificación"));
-  wrap.appendChild(el("div", {className:"login-desc"}, `Introduce el código de 6 dígitos enviado a\n${email}`));
+  wrap.appendChild(el("div", {className:"login-title"}, "Contraseña"));
+  wrap.appendChild(el("div", {className:"login-desc"}, `Introduce tu contraseña de acceso\n${email}`));
 
-  const codeWrap = el("div", {style:{marginBottom:"16px"}});
-  const codeLabel = el("label", {style:{display:"block", fontSize:"13px", fontWeight:"600", color:"var(--muted)", marginBottom:"6px"}}, "Código de verificación");
-  const codeInput = el("input", {
-    type:"text", placeholder:"000000", maxlength:"6",
-    style:{width:"100%", padding:"14px", borderRadius:"10px", border:"2px solid var(--indra)", fontSize:"22px", fontFamily:"inherit", color:"var(--text)", outline:"none", boxSizing:"border-box", textAlign:"center", letterSpacing:"8px", fontWeight:"800"}
+  const pwWrap = el("div", {style:{marginBottom:"16px"}});
+  const pwLabel = el("label", {style:{display:"block", fontSize:"13px", fontWeight:"600", color:"var(--muted)", marginBottom:"6px"}}, "Contraseña");
+  const pwInput = el("input", {
+    type:"password", placeholder:"••••••••",
+    style:{width:"100%", padding:"14px", borderRadius:"10px", border:"2px solid var(--indra)", fontSize:"18px", fontFamily:"inherit", color:"var(--text)", outline:"none", boxSizing:"border-box"}
   });
-  codeWrap.appendChild(codeLabel);
-  codeWrap.appendChild(codeInput);
-  wrap.appendChild(codeWrap);
+  // Permitir Enter para acceder
+  pwInput.addEventListener("keydown", e => { if (e.key === "Enter") btnVerify.click(); });
+  pwWrap.appendChild(pwLabel);
+  pwWrap.appendChild(pwInput);
+  wrap.appendChild(pwWrap);
 
   const btnVerify = el("button", {className:"btn btn-primary btn-full", onClick: async () => {
-    const code = codeInput.value.trim();
-    if (code.length !== 6) { alert("El código debe tener 6 dígitos."); return; }
+    const password = pwInput.value.trim();
+    if (!password) { alert("Introduce tu contraseña."); return; }
 
     state.loading = true;
     app.innerHTML = "";
-    app.appendChild(el("div", {className:"loading"}, "⟳ Verificando código..."));
+    app.appendChild(el("div", {className:"loading"}, "⟳ Verificando..."));
 
     try {
-      await apiRequest("VerifyCode", { method:"POST", body: JSON.stringify({ email, code }) });
+      // Validar contraseña contra Azure Tables
+      await apiRequest("VerifyCode", { method:"POST", body: JSON.stringify({ email, password }) });
 
-      // Code valid — complete login
+      // Login correcto
       const isAdminUser = CONFIG.adminUsers.includes(email) || state.admins.includes(email);
       const teamMember = state.team.find(m => (m.Email || "").toLowerCase() === email);
       state.currentUser = {
@@ -1317,7 +1312,6 @@ async function renderLoginStep2(email, role) {
         }
         await loadEvaluators();
         await loadResponses();
-        // Intentar recuperar selección previa
         const hasSaved = loadSelection();
         if (hasSaved && state.selectedSubjects.length) {
           const validIDs = state.team.map(m => m.ID);
@@ -1333,46 +1327,29 @@ async function renderLoginStep2(email, role) {
     } catch(e) {
       state.loading = false;
       app.innerHTML = "";
-      wrap.querySelector("input").value = "";
       const errMsg = e.message.includes("401") || e.message.includes("API Error")
-        ? "Código incorrecto o expirado. Inténtalo de nuevo."
+        ? "Contraseña incorrecta. Inténtalo de nuevo."
         : "Error: " + e.message;
       const errDiv = el("div", {className:"alert alert-error", style:{marginBottom:"12px"}}, errMsg);
       wrap.insertBefore(errDiv, wrap.querySelector(".btn"));
       app.appendChild(wrap);
+      pwInput.value = "";
+      pwInput.focus();
       return;
     }
     state.loading = false;
     render();
-  }}, "Verificar y entrar →");
+  }}, "Entrar →");
 
   wrap.appendChild(btnVerify);
 
-  // Resend code
-  const resendWrap = el("div", {style:{marginTop:"16px", textAlign:"center"}});
-  const resendBtn = el("button", {
-    style:{background:"none", border:"none", color:"var(--indra)", cursor:"pointer", fontSize:"13px", fontFamily:"inherit", fontWeight:"600"},
-    onClick: async () => {
-      resendBtn.textContent = "Enviando...";
-      resendBtn.disabled = true;
-      try {
-        await apiRequest("SendVerificationCode", { method:"POST", body: JSON.stringify({ email }) });
-        resendBtn.textContent = "✓ Código reenviado";
-        setTimeout(() => { resendBtn.textContent = "Reenviar código"; resendBtn.disabled = false; }, 3000);
-      } catch(e) {
-        resendBtn.textContent = "Error al reenviar";
-        resendBtn.disabled = false;
-      }
-    }
-  }, "Reenviar código");
-  resendWrap.appendChild(resendBtn);
-  resendWrap.appendChild(el("span", {style:{color:"var(--faint)", fontSize:"13px", marginLeft:"12px", cursor:"pointer"}, onClick: () => render()}, "← Cambiar email"));
-  wrap.appendChild(resendWrap);
+  const backWrap = el("div", {style:{marginTop:"16px", textAlign:"center"}});
+  backWrap.appendChild(el("span", {style:{color:"var(--faint)", fontSize:"13px", cursor:"pointer"}, onClick: () => render()}, "← Cambiar email"));
+  wrap.appendChild(backWrap);
 
   app.appendChild(wrap);
+  setTimeout(() => pwInput.focus(), 100);
 }
-
-
 
 function renderEvalList() {
   const cont = el("div", {className:"container"});
@@ -2108,10 +2085,20 @@ function renderAdminConfig() {
         EvaluaTambien: chkE.checked
       };
       if (!item.Nombre) { alert("El nombre es obligatorio"); return; }
+      // Generar contraseña automática si es nuevo miembro
+      if (f.isNew) {
+        item.Password = generatePassword();
+        state._lastGeneratedPassword = { nombre: item.Nombre, password: item.Password };
+      }
       if (f.isNew) await createListItem(CONFIG.lists.equipo, item);
       else await updateListItem(CONFIG.lists.equipo, f.ID, item);
       await loadTeam(); await loadEvaluators();
-      state.editingTeamItem = null; render();
+      state.editingTeamItem = null;
+      if (f.isNew && state._lastGeneratedPassword) {
+        alert(`✅ Miembro creado correctamente.\n\n🔑 Contraseña generada para ${state._lastGeneratedPassword.nombre}:\n\n${state._lastGeneratedPassword.password}\n\nComunícasela por Teams o email. Guárdala ahora — no volverá a mostrarse automáticamente.`);
+        state._lastGeneratedPassword = null;
+      }
+      render();
     }}, "Guardar"));
     btnRow.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: () => { state.editingTeamItem = null; render(); }}, "Cancelar"));
     formCard.appendChild(btnRow);
@@ -2152,6 +2139,17 @@ function renderAdminConfig() {
     item.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: () => {
       state.editingTeamItem = {...m}; render();
     }}, "Editar"));
+    // Botón resetear contraseña — solo para admin raíz
+    if (state.isRootAdmin && m.Email) {
+      item.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: async () => {
+        const newPwd = generatePassword();
+        if (!confirm(`¿Resetear la contraseña de ${m.Nombre}?\n\nNueva contraseña: ${newPwd}\n\nComunícasela por Teams o email.`)) return;
+        await updateListItem(CONFIG.lists.equipo, m.ID, { ...m, Password: newPwd });
+        await loadTeam();
+        alert(`✅ Contraseña actualizada para ${m.Nombre}:\n\n🔑 ${newPwd}\n\nGuárdala ahora.`);
+        render();
+      }}, "🔑 Contraseña"));
+    }
     item.appendChild(el("button", {className:"btn btn-danger btn-sm", onClick: async () => {
       if (confirm(`¿Eliminar a ${m.Nombre}?`)) {
         await deleteListItem(CONFIG.lists.equipo, m.ID);
