@@ -286,8 +286,26 @@ function initSecurity(emailInput) {
 }
 
 // ═══════════════════════════════════════════════════════
-// DRIVER DATA
+// PERSISTENCIA DE SELECCIÓN (localStorage)
 // ═══════════════════════════════════════════════════════
+function getSelectionKey() {
+  const email = state.currentUser?.email || "";
+  const campanaID = state.campanaActiva?.ID || "default";
+  return `sel_${email}_${campanaID}`;
+}
+function saveSelection() {
+  try { localStorage.setItem(getSelectionKey(), JSON.stringify(state.selectedSubjects)); } catch(e) {}
+}
+function loadSelection() {
+  try {
+    const saved = localStorage.getItem(getSelectionKey());
+    if (saved) { state.selectedSubjects = JSON.parse(saved); return true; }
+  } catch(e) {}
+  return false;
+}
+function clearSelection() {
+  try { localStorage.removeItem(getSelectionKey()); } catch(e) {}
+}
 const SCORE_META = {
   1: { label: "No cumple expectativas", color: "var(--red)", bg: "var(--red-bg)", short: "NCE" },
   2: { label: "Con ámbitos de mejora", color: "var(--yellow)", bg: "var(--yellow-bg)", short: "CAM" },
@@ -779,7 +797,7 @@ function gradosHasta(n) {
 // STATE
 // ═══════════════════════════════════════════════════════
 const state = {
-  view: "login",        // login | selectSubjects | evalList | evalForm | done | adminDash | adminReport | adminConfig | adminCampanas | adminConfigDrivers
+  view: "login",        // login | selectSubjects | evalList | evalForm | done | adminDash | adminReport | adminConfig | adminCampanas | adminConfigDrivers | adminRoot | adminRootReport
   isAdmin: false,
   isRootAdmin: false,
   currentUser: null,
@@ -1285,8 +1303,18 @@ async function renderLoginStep2(email, role) {
         }
         await loadEvaluators();
         await loadResponses();
-        state.selectedSubjects = [];
-        state.view = "selectSubjects";
+        // Intentar recuperar selección previa
+        const hasSaved = loadSelection();
+        if (hasSaved && state.selectedSubjects.length) {
+          const validIDs = state.team.map(m => m.ID);
+          state.selectedSubjects = state.selectedSubjects.filter(id => validIDs.includes(id));
+        }
+        if (state.selectedSubjects.length > 0) {
+          state.view = "evalList";
+        } else {
+          state.selectedSubjects = [];
+          state.view = "selectSubjects";
+        }
       }
     } catch(e) {
       state.loading = false;
@@ -1349,7 +1377,6 @@ function renderEvalList() {
     onClick: () => { state.view = "selectSubjects"; render(); }
   }, "← Cambiar selección");
   cont.appendChild(backBtn);
-
   filtered.forEach(member => {
     const submitted = hasSubmitted(member.ID);
     const item = el("div", {className: "eval-item" + (submitted ? " done" : "")});
@@ -1564,8 +1591,6 @@ function renderSuggestionsSection(container, dId, cfg) {
         if (!state.scores[dId]) state.scores[dId] = {};
         const picking = currentPick !== s;
         state.scores[dId].pick = picking ? s : "";
-        // Si selecciona sugerido, lo precarga en el textarea como punto de partida
-        // pero marca que aún necesita edición manual (commentFromPick)
         if (picking) {
           state.scores[dId].comment = s;
           state.scores[dId].commentFromPick = true;
@@ -1584,23 +1609,31 @@ function renderSuggestionsSection(container, dId, cfg) {
   const ta = el("textarea", {
     placeholder: scoreVal === 5
       ? "Justificación obligatoria: explica por qué es una ejecución excepcional (puedes partir del texto sugerido y ampliar)..."
-      : "Comentario adicional (opcional)...",
+      : "Comentario adicional (opcional para score < 5, pero debes seleccionar al menos un feedback sugerido)...",
     rows: "2"
   });
   ta.value = state.scores[dId]?.comment || "";
-  // Score 5: borde rojo si no hay comentario O si el comentario es exactamente el texto del pick sin editar
   const commentVal = state.scores[dId]?.comment || "";
   const isFromPick = state.scores[dId]?.commentFromPick === true;
+  const hasPick = !!(state.scores[dId]?.pick);
+  // Borde rojo si: score 5 sin comment propio, O cualquier score sin pick NI comment
   if (scoreVal === 5 && (!commentVal || isFromPick)) {
+    ta.className = "required-border";
+  } else if (scoreVal > 0 && !hasPick && !commentVal?.trim()) {
     ta.className = "required-border";
   }
   ta.addEventListener("input", () => {
     if (!state.scores[dId]) state.scores[dId] = {};
     state.scores[dId].comment = ta.value;
-    state.scores[dId].commentFromPick = false; // El evaluador ha editado manualmente
+    state.scores[dId].commentFromPick = false;
     updateSubmitBtn();
-    // Quitar borde rojo en tiempo real cuando hay texto propio
-    ta.className = (state.scores[dId].score === 5 && !ta.value.trim()) ? "required-border" : "";
+    const s5 = state.scores[dId].score === 5;
+    const hasP = !!(state.scores[dId].pick);
+    if (s5) {
+      ta.className = (!ta.value.trim()) ? "required-border" : "";
+    } else {
+      ta.className = (!ta.value.trim() && !hasP) ? "required-border" : "";
+    }
   });
   container.appendChild(ta);
 }
@@ -1611,6 +1644,8 @@ function canSubmit() {
     if (!v?.score) return false;
     // Score 5: exige comentario propio y no puede ser solo el pick sin editar
     if (v.score === 5 && (!v.comment?.trim() || v.commentFromPick)) return false;
+    // Cualquier score: exige pick O comentario propio
+    if (!v.pick && !v.comment?.trim()) return false;
     return true;
   });
 }
@@ -1723,6 +1758,7 @@ function renderSelectSubjects() {
         alert("Selecciona al menos un compañero para evaluar.");
         return;
       }
+      saveSelection();
       state.view = "evalList";
       render();
     }
@@ -2395,16 +2431,63 @@ function renderResumenCampana(campana, responses) {
   });
   cont.appendChild(statsGrid);
 
-  // Evaluadores que aún no han enviado
-  const evaluadoresPendientes = state.evaluators.filter(e => !evaluadoresIDs.includes(e.ID) && !evaluadoresIDs.includes(e.Email));
-  if (evaluadoresPendientes.length) {
-    const pendCard = el("div", {className:"card card-warn", style:{marginBottom:"16px"}});
-    pendCard.appendChild(el("div", {className:"section-label"}, "⏳ Evaluadores pendientes"));
-    evaluadoresPendientes.forEach(e => {
-      pendCard.appendChild(el("div", {style:{fontSize:"13px", color:"var(--yellow)", padding:"3px 0"}}, `· ${e.Nombre}`));
-    });
-    cont.appendChild(pendCard);
+  // Evaluadores pendientes y finalizados — basado en su selección guardada
+  const pendCard = el("div", {className:"card card-warn", style:{marginBottom:"16px"}});
+  pendCard.appendChild(el("div", {className:"section-label"}, "⏳ Evaluadores pendientes"));
+  const doneCard = el("div", {className:"card", style:{marginBottom:"16px", background:"var(--green-bg)", border:"1px solid var(--green)"}});
+  doneCard.appendChild(el("div", {className:"section-label", style:{color:"var(--green)"}}, "✅ Evaluadores finalizados"));
+
+  let hayPendientes = false;
+  let hayFinalizados = false;
+
+  state.evaluators.forEach(ev => {
+    // Recuperar selección guardada de este evaluador para esta campaña
+    const selKey = `sel_${ev.Email || ev.ID}_${campana.ID}`;
+    let seleccion = [];
+    try {
+      const saved = localStorage.getItem(selKey);
+      if (saved) seleccion = JSON.parse(saved);
+    } catch(e) {}
+
+    // Las evaluaciones que ya envió en esta campaña
+    const enviadas = responses.filter(r =>
+      r.EvaluadorID === ev.ID || r.EvaluadorID === ev.Email
+    );
+    const evaluadosIDs = [...new Set(enviadas.map(r => r.EvaluadoID))];
+
+    if (seleccion.length > 0) {
+      // Tiene selección guardada — calcular pendientes de su lista
+      const pendientes = seleccion.filter(id => !evaluadosIDs.includes(id));
+      const totalSel = seleccion.length;
+      const done = pendientes.length === 0;
+      if (done) {
+        doneCard.appendChild(el("div", {style:{fontSize:"13px",color:"var(--green)",padding:"3px 0"}},
+          `· ${ev.Nombre} (${totalSel}/${totalSel} evaluados)`));
+        hayFinalizados = true;
+      } else {
+        pendCard.appendChild(el("div", {style:{fontSize:"13px",color:"var(--yellow)",padding:"3px 0"}},
+          `· ${ev.Nombre} — ${pendientes.length}/${totalSel} personas pendientes`));
+        hayPendientes = true;
+      }
+    } else {
+      // Sin selección guardada — pendiente si no ha enviado ninguna evaluación
+      if (evaluadosIDs.length === 0) {
+        pendCard.appendChild(el("div", {style:{fontSize:"13px",color:"var(--yellow)",padding:"3px 0"}},
+          `· ${ev.Nombre} — sin iniciar`));
+        hayPendientes = true;
+      } else {
+        doneCard.appendChild(el("div", {style:{fontSize:"13px",color:"var(--green)",padding:"3px 0"}},
+          `· ${ev.Nombre} (${evaluadosIDs.length} evaluados)`));
+        hayFinalizados = true;
+      }
+    }
+  });
+
+  if (!hayPendientes) {
+    pendCard.appendChild(el("div", {style:{fontSize:"13px",color:"var(--green)",padding:"3px 0"}}, "🎉 Todos los evaluadores han completado sus evaluaciones."));
   }
+  cont.appendChild(pendCard);
+  if (hayFinalizados) cont.appendChild(doneCard);
 
   // Ranking del equipo
   const rankCard = el("div", {className:"card", style:{marginBottom:"16px"}});
@@ -2643,6 +2726,175 @@ async function renderAdminConfigDrivers() {
   return cont;
 }
 
+// ═══ ADMIN ROOT — detalle por evaluador (solo admin raíz) ═══
+function renderAdminRoot() {
+  const cont = el("div", {className:"container-wide"});
+  cont.appendChild(el("div", {className:"page-title"}, "Panel Admin · Detalle por evaluador"));
+  cont.appendChild(el("div", {className:"page-sub"}, "Vista exclusiva del administrador raíz"));
+  const totalEvals = state.evaluators.length;
+  state.team.forEach(member => {
+    const memberResponses = state.responses.filter(r => r.EvaluadoID === member.ID);
+    const avg = calcWeightedAvg(memberResponses, member.Rol, member);
+    const pct = totalEvals > 0 ? memberResponses.length / totalEvals : 0;
+    const card = el("div", {className:"subject-card"});
+    card.addEventListener("click", async () => {
+      state.reportSubject = member;
+      await loadResponses(member.ID);
+      state.view = "adminRootReport"; render();
+    });
+    const cardHeader = el("div", {className:"subject-card-header"});
+    const left = el("div");
+    left.appendChild(el("div", {style:{fontWeight:"700",fontSize:"15px",color:"var(--text)"}}, member.Nombre));
+    left.appendChild(el("div", {style:{fontSize:"12px",color:"var(--faint)",marginTop:"2px"}}, `${member.Rol} · Grado ${member.Grado}`));
+    cardHeader.appendChild(left);
+    const right = el("div", {style:{textAlign:"right",display:"flex",gap:"10px",alignItems:"center"}});
+    const scoreEl = el("div", {className:"subject-score"});
+    scoreEl.style.color = avg ? getScoreColor(avg) : "var(--faint)";
+    scoreEl.textContent = avg || "–";
+    right.appendChild(scoreEl);
+    right.appendChild(el("div", {style:{fontSize:"11px",color:"var(--faint)"}}, `${memberResponses.length}/${totalEvals} resp.`));
+    cardHeader.appendChild(right);
+    card.appendChild(cardHeader);
+    const progressWrap = el("div", {style:{display:"flex",alignItems:"center",gap:"8px",marginTop:"10px"}});
+    const pb = renderProgressBar(pct, pct === 1 ? "var(--green)" : "var(--indra)");
+    pb.style.flex = "1";
+    progressWrap.appendChild(pb);
+    progressWrap.appendChild(el("span", {style:{fontSize:"11px",color:"var(--faint)",whiteSpace:"nowrap"}}, `${Math.round(pct*100)}%`));
+    card.appendChild(progressWrap);
+    if (avg) {
+      const miniPills = el("div", {className:"driver-mini"});
+      DRIVER_ORDER.forEach(d => {
+        const da = calcDriverAvg(memberResponses, d);
+        if (da) {
+          const pill = el("span", {className:"driver-mini-pill"});
+          pill.style.background = getScoreBg(da);
+          pill.style.color = getScoreColor(da);
+          pill.textContent = `${DRIVER_ICONS[d]} ${da}`;
+          miniPills.appendChild(pill);
+        }
+      });
+      card.appendChild(miniPills);
+    }
+    cont.appendChild(card);
+  });
+  return cont;
+}
+
+function renderAdminRootReport() {
+  const subject = state.reportSubject;
+  const cfg = getDriverConfig(subject);
+  const responses = state.responses.filter(r => r.EvaluadoID === subject.ID);
+  const avg = calcWeightedAvg(responses, subject.Rol);
+  const avgNum = avg ? parseFloat(avg) : 0;
+  const cont = el("div", {className:"container"});
+  cont.appendChild(el("button", {className:"btn btn-secondary btn-sm", style:{marginBottom:"20px"}, onClick: async () => {
+    await loadResponses(); state.view = "adminRoot"; render();
+  }}, "← Volver a Admin"));
+  cont.appendChild(el("div", {className:"page-title"}, `Admin 360° — ${subject.Nombre}`));
+  cont.appendChild(el("div", {className:"page-sub"}, `${subject.Rol} · Grado ${subject.Grado} · ${responses.length} evaluaciones`));
+  if (!responses.length) {
+    cont.appendChild(el("div", {className:"empty"}, "Sin respuestas aún para este evaluado."));
+    return cont;
+  }
+  const overallCard = el("div", {className:"card", style:{marginBottom:"16px"}});
+  overallCard.style.background = avg ? getScoreBg(avg) : "var(--indra-light)";
+  overallCard.style.borderColor = avg ? getScoreColor(avg) + "40" : "rgba(0,61,165,0.2)";
+  const overallRow = el("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center"}});
+  const overallLeft = el("div");
+  overallLeft.appendChild(el("div", {className:"section-label"}, "Puntuación global ponderada"));
+  const overallScore = el("div", {style:{fontSize:"40px",fontWeight:"900"}});
+  overallScore.style.color = avg ? getScoreColor(avg) : "var(--indra)";
+  overallScore.textContent = avg || "–";
+  overallLeft.appendChild(overallScore);
+  if (avg) {
+    const scoreLbl = el("div", {style:{fontSize:"14px",fontWeight:"600"}});
+    scoreLbl.style.color = getScoreColor(avg);
+    scoreLbl.textContent = SCORE_META[Math.round(avgNum)]?.label || "";
+    overallLeft.appendChild(scoreLbl);
+  }
+  overallRow.appendChild(overallLeft);
+  const driverScores = {};
+  DRIVER_ORDER.forEach(d => { driverScores[d] = calcDriverAvg(responses, d); });
+  overallRow.appendChild(renderRadar(driverScores, subject.Rol));
+  overallCard.appendChild(overallRow);
+  cont.appendChild(overallCard);
+  const driversCard = el("div", {className:"card", style:{marginBottom:"16px"}});
+  driversCard.appendChild(el("div", {className:"section-label"}, "Detalle por driver"));
+  DRIVER_ORDER.forEach(d => {
+    const da = driverScores[d];
+    const daNum = da ? parseFloat(da) : 0;
+    const row = el("div", {className:"driver-report-row"});
+    row.appendChild(el("span", {className:"driver-report-icon"}, DRIVER_ICONS[d]));
+    const nameWrap = el("div", {style:{flex:"1"}});
+    nameWrap.appendChild(el("div", {className:"driver-report-name"}, DRIVER_NAMES[d]));
+    nameWrap.appendChild(el("div", {className:"driver-report-weight"}, `Peso ${(cfg.weights[d]*100).toFixed(0)}%`));
+    row.appendChild(nameWrap);
+    const barWrap = el("div", {className:"driver-bar-wrap"});
+    barWrap.appendChild(renderProgressBar(daNum/5, da ? getScoreColor(da) : undefined));
+    row.appendChild(barWrap);
+    const scoreEl = el("div", {className:"driver-score-val"});
+    scoreEl.style.color = da ? getScoreColor(da) : "var(--faint)";
+    scoreEl.textContent = da || "–";
+    row.appendChild(scoreEl);
+    driversCard.appendChild(row);
+  });
+  cont.appendChild(driversCard);
+  // Detalle por evaluador
+  const adminSection = el("div", {className:"admin-only"});
+  adminSection.appendChild(el("div", {className:"admin-only-title"}, "Detalle por evaluador"));
+  responses.forEach(r => {
+    const evaluator = state.evaluators.find(e => e.ID === r.EvaluadorID);
+    const rRow = el("div", {className:"response-row"});
+    const evalHeader = el("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"8px"}});
+    const evalName = el("div", {className:"response-evaluator", style:{margin:"0"}});
+    evalName.textContent = evaluator?.Nombre || r.EvaluadorNombre || `Evaluador ${r.EvaluadorID}`;
+    const dateEl = el("span", {className:"response-date"});
+    dateEl.textContent = r.FechaEnvio ? new Date(r.FechaEnvio).toLocaleString("es-ES") : "";
+    evalName.appendChild(dateEl);
+    evalHeader.appendChild(evalName);
+    const maxScore = Math.max(...DRIVER_ORDER.map(d => {
+      const map = {capacidad_analitica:"CapAnalit",excelencia_entrega:"ExcEntrega",trabajo_equipo:"TrabEquipo",gestion:"Gestion",interlocucion:"Interlocucion",conocimiento_tecnico:"ConocTecnico"};
+      return r[`Score_${map[d]}`] || 0;
+    }));
+    if (maxScore >= 4) {
+      const delBtn = el("button", {className:"btn btn-danger btn-sm", onClick: async () => {
+        if (!confirm(`¿Eliminar la evaluación de ${evaluator?.Nombre || r.EvaluadorNombre}?`)) return;
+        state.loading = true; render();
+        try {
+          await deleteRespuesta(r.Periodo, r.ID);
+          await loadResponses(subject.ID);
+          state.reportSubject = subject;
+          state.view = "adminRootReport";
+        } catch(e) { alert("Error: " + e.message); }
+        state.loading = false; render();
+      }}, "🗑 Eliminar");
+      evalHeader.appendChild(delBtn);
+    }
+    rRow.appendChild(evalHeader);
+    DRIVER_ORDER.forEach(d => {
+      const map = {capacidad_analitica:"CapAnalit",excelencia_entrega:"ExcEntrega",trabajo_equipo:"TrabEquipo",gestion:"Gestion",interlocucion:"Interlocucion",conocimiento_tecnico:"ConocTecnico"};
+      const key = map[d];
+      const score = r[`Score_${key}`];
+      if (!score) return;
+      const dRow = el("div", {className:"response-driver"});
+      const scoreSpan = el("span", {style:{fontWeight:"700"}});
+      scoreSpan.style.color = getScoreColor(score.toString());
+      scoreSpan.textContent = score;
+      dRow.appendChild(document.createTextNode(`${DRIVER_NAMES[d]}: `));
+      dRow.appendChild(scoreSpan);
+      const pick = r[`Pick_${key}`];
+      const comment = r[`Comment_${key}`];
+      if (pick || comment) {
+        dRow.appendChild(document.createTextNode(` — ${pick || ""}${pick && comment ? ". " : ""}${comment || ""}`));
+      }
+      rRow.appendChild(dRow);
+    });
+    adminSection.appendChild(rRow);
+  });
+  cont.appendChild(adminSection);
+  return cont;
+}
+
 function render() {
   const app = document.getElementById("app");
   app.innerHTML = "";
@@ -2657,19 +2909,24 @@ function render() {
   if (topbar) app.appendChild(topbar);
 
   // Admin tabs
-  if (state.isAdmin && !["adminReport","login"].includes(state.view)) {
-    const adminViews = ["adminDash","adminConfig","adminCampanas","adminConfigDrivers"];
+  if (state.isAdmin && !["adminReport","adminRootReport","login"].includes(state.view)) {
+    const adminViews = ["adminDash","adminConfig","adminCampanas","adminConfigDrivers","adminRoot"];
     if (adminViews.includes(state.view)) {
       const tabs = el("div", {className:"tabs"});
-      [
+      const tabList = [
         {id:"adminDash", label:"📊 Resultados"},
         {id:"adminCampanas", label:"📅 Campañas"},
         {id:"adminConfigDrivers", label:"⚙️ Drivers"},
         {id:"adminConfig", label:"👥 Equipo y Evaluadores"}
-      ].forEach(tab => {
+      ];
+      // Tab Admin solo visible para el admin raíz
+      if (state.isRootAdmin) {
+        tabList.push({id:"adminRoot", label:"🔐 Admin"});
+      }
+      tabList.forEach(tab => {
         const btn = el("button", {className:"tab-btn" + (state.view === tab.id ? " active" : ""), onClick: async () => {
           state.view = tab.id;
-          if (tab.id === "adminDash") await loadResponses();
+          if (tab.id === "adminDash" || tab.id === "adminRoot") await loadResponses();
           if (tab.id === "adminConfig") { await loadTeam(); await loadEvaluators(); }
           if (tab.id === "adminCampanas") await loadCampanas();
           render();
@@ -2691,6 +2948,8 @@ function render() {
     case "adminReport": content = renderAdminReport(); break;
     case "adminConfig": content = renderAdminConfig(); break;
     case "adminCampanas": content = renderAdminCampanas(); break;
+    case "adminRoot": content = renderAdminRoot(); break;
+    case "adminRootReport": content = renderAdminRootReport(); break;
     case "adminConfigDrivers":
       renderAdminConfigDrivers().then(c => { if (c) app.appendChild(c); });
       return;
