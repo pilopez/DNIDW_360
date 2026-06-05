@@ -2166,6 +2166,7 @@ function renderAdminConfig() {
       // Generar contraseña automática si es nuevo miembro
       if (f.isNew) {
         item.Password = generatePassword();
+        item.MustChangePassword = true;
         state._lastGeneratedPassword = { nombre: item.Nombre, password: item.Password };
       }
       if (f.isNew) await createListItem(CONFIG.lists.equipo, item);
@@ -2221,10 +2222,10 @@ function renderAdminConfig() {
     if (state.isRootAdmin && m.Email) {
       item.appendChild(el("button", {className:"btn btn-secondary btn-sm", onClick: async () => {
         const newPwd = generatePassword();
-        if (!confirm(`¿Resetear la contraseña de ${m.Nombre}?\n\nNueva contraseña: ${newPwd}\n\nComunícasela por Teams o email.`)) return;
-        await updateListItem(CONFIG.lists.equipo, m.ID, { ...m, Password: newPwd });
+        if (!confirm(`¿Resetear la contraseña de ${m.Nombre}?\n\nNueva contraseña: ${newPwd}\n\nSe le pedirá que la cambie en su próximo acceso.\nComunícasela por Teams o email.`)) return;
+        await updateListItem(CONFIG.lists.equipo, m.ID, { ...m, Password: newPwd, MustChangePassword: true });
         await loadTeam();
-        alert(`✅ Contraseña actualizada para ${m.Nombre}:\n\n🔑 ${newPwd}\n\nGuárdala ahora.`);
+        alert(`✅ Contraseña reseteada para ${m.Nombre}:\n\n🔑 ${newPwd}\n\nGuárdala ahora.`);
         render();
       }}, "🔑 Contraseña"));
     }
