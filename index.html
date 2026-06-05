@@ -289,12 +289,21 @@ function initSecurity(emailInput) {
 // PERSISTENCIA DE SELECCIÓN (localStorage)
 // ═══════════════════════════════════════════════════════
 function getSelectionKey() {
-  const email = state.currentUser?.email || "";
+  const email = (state.currentUser?.email || "").toLowerCase().trim();
   const campanaID = state.campanaActiva?.ID || "default";
   return `sel_${email}_${campanaID}`;
 }
 function saveSelection() {
   try { localStorage.setItem(getSelectionKey(), JSON.stringify(state.selectedSubjects)); } catch(e) {}
+  // Guardar también en Azure para que el admin pueda verlo en el resumen
+  apiRequest("ManageData?table=Selecciones", {
+    method: "POST",
+    body: JSON.stringify({
+      EvaluadorEmail: (state.currentUser?.email || "").toLowerCase(),
+      CampanaID: state.campanaActiva?.ID || "default",
+      Seleccion: state.selectedSubjects
+    })
+  }).catch(() => {}); // silencioso — el localStorage es el fallback
 }
 function loadSelection() {
   try {
@@ -2322,7 +2331,7 @@ function renderAdminCampanas() {
         if (!state.evaluators.length) await loadEvaluators();
         const respsCampana = await apiRequest(`GetRespuestas?periodoID=${encodeURIComponent(c.ID)}`);
         state.loading = false;
-        renderResumenCampana(c, respsCampana);
+        await renderResumenCampana(c, respsCampana);
       } catch(e) {
         state.loading = false;
         alert("Error al cargar resumen: " + e.message);
@@ -2336,7 +2345,7 @@ function renderAdminCampanas() {
 }
 
 // ─── Resumen ejecutivo de campaña ─────────────────────────
-function renderResumenCampana(campana, responses) {
+async function renderResumenCampana(campana, responses) {
   const app = document.getElementById("app");
   app.innerHTML = "";
   const topbar = renderTopbar();
@@ -2345,6 +2354,28 @@ function renderResumenCampana(campana, responses) {
   const cont = el("div", {className:"container"});
   cont.appendChild(el("button", {className:"btn btn-secondary btn-sm", style:{marginBottom:"20px"}, onClick: () => { state.view = "adminCampanas"; render(); }}, "← Volver a campañas"));
   cont.appendChild(el("div", {className:"page-title"}, `Resumen ejecutivo · ${campana.Nombre}`));
+
+  // Cargar selecciones guardadas en Azure para esta campaña
+  let seleccionesAzure = [];
+  try {
+    const selData = await apiRequest("ManageData?table=Selecciones");
+    seleccionesAzure = selData.filter(s => s.CampanaID === campana.ID);
+  } catch(e) {}
+
+  function getSeleccionEvaluador(evEmail) {
+    const key = (evEmail || "").toLowerCase().trim();
+    const entry = seleccionesAzure.find(s => s.EvaluadorEmail === key);
+    if (entry) {
+      try { return JSON.parse(entry.Seleccion || "[]"); } catch(e) {}
+    }
+    // Fallback: localStorage (solo funciona si el admin usa el mismo navegador)
+    try {
+      const lsKey = `sel_${key}_${campana.ID}`;
+      const saved = localStorage.getItem(lsKey);
+      if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    return [];
+  }
 
   if (!responses.length) {
     cont.appendChild(el("div", {className:"empty"}, "Sin evaluaciones en esta campaña."));
@@ -2383,13 +2414,10 @@ function renderResumenCampana(campana, responses) {
   let hayFinalizados = false;
 
   state.evaluators.forEach(ev => {
-    // Recuperar selección guardada de este evaluador para esta campaña
-    const selKey = `sel_${ev.Email || ev.ID}_${campana.ID}`;
-    let seleccion = [];
-    try {
-      const saved = localStorage.getItem(selKey);
-      if (saved) seleccion = JSON.parse(saved);
-    } catch(e) {}
+    // La clave de localStorage siempre se guarda con el email en minúsculas
+    // Buscar el email del evaluador de la misma forma que lo usa getSelectionKey()
+    const evEmail = (ev.Email || ev.Nombre || ev.ID || "").toLowerCase().trim();
+    const seleccion = getSeleccionEvaluador(evEmail);
 
     // Las evaluaciones que ya envió en esta campaña
     const enviadas = responses.filter(r =>
