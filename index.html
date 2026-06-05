@@ -916,7 +916,12 @@ async function loadEvaluators() {
   // fallback: si ninguno tiene EvaluaTambien, carga lista Evaluadores legacy
   const teamEvals = state.team.filter(m => m.EvaluaTambien);
   if (teamEvals.length > 0) {
-    state.evaluators = teamEvals.map(m => ({ ID: m.ID, Nombre: m.Nombre, Email: m.ID, Activo: true }));
+    state.evaluators = teamEvals.map(m => ({
+      ID: m.ID,
+      Nombre: m.Nombre,
+      Email: (m.Email || m.ID || "").toLowerCase(), // email real, no el rowKey
+      Activo: true
+    }));
   } else {
     state.evaluators = await apiRequest("GetEvaluadores");
   }
@@ -2414,15 +2419,16 @@ async function renderResumenCampana(campana, responses) {
   let hayFinalizados = false;
 
   state.evaluators.forEach(ev => {
-    // La clave de localStorage siempre se guarda con el email en minúsculas
-    // Buscar el email del evaluador de la misma forma que lo usa getSelectionKey()
-    const evEmail = (ev.Email || ev.Nombre || ev.ID || "").toLowerCase().trim();
+    // ev.Email ahora es siempre el email real en minúsculas
+    const evEmail = (ev.Email || "").toLowerCase().trim();
     const seleccion = getSeleccionEvaluador(evEmail);
 
     // Las evaluaciones que ya envió en esta campaña
-    const enviadas = responses.filter(r =>
-      r.EvaluadorID === ev.ID || r.EvaluadorID === ev.Email
-    );
+    // EvaluadorID en Respuestas es el email del evaluador (state.currentUser.id = email)
+    const enviadas = responses.filter(r => {
+      const rEval = (r.EvaluadorID || "").toLowerCase();
+      return rEval === evEmail || rEval === ev.ID;
+    });
     const evaluadosIDs = [...new Set(enviadas.map(r => r.EvaluadoID))];
 
     if (seleccion.length > 0) {
