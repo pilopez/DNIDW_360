@@ -1970,65 +1970,7 @@ function renderAdminReport() {
   });
   cont.appendChild(commCard);
 
-  // Admin-only section — solo visible para el administrador raíz
-  if (state.isRootAdmin) {
-    const adminSection = el("div", {className:"admin-only"});
-    adminSection.appendChild(el("div", {className:"admin-only-title"}, "Solo visible para el administrador — Detalle por evaluador"));
-  responses.forEach(r => {
-    const evaluator = state.evaluators.find(e => e.ID === r.EvaluadorID);
-    const rRow = el("div", {className:"response-row"});
-
-    const evalHeader = el("div", {style:{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"8px"}});
-    const evalName = el("div", {className:"response-evaluator", style:{margin:"0"}});
-    evalName.textContent = evaluator?.Nombre || r.EvaluadorNombre || `Evaluador ${r.EvaluadorID}`;
-    const dateEl = el("span", {className:"response-date"});
-    dateEl.textContent = r.FechaEnvio ? new Date(r.FechaEnvio).toLocaleString("es-ES") : "";
-    evalName.appendChild(dateEl);
-    evalHeader.appendChild(evalName);
-
-    // Delete button (F3) — only for evaluations with score 4 or 5
-    const maxScore = Math.max(...DRIVER_ORDER.map(d => {
-      const map = { capacidad_analitica:"CapAnalit", excelencia_entrega:"ExcEntrega", trabajo_equipo:"TrabEquipo", gestion:"Gestion", interlocucion:"Interlocucion", conocimiento_tecnico:"ConocTecnico" };
-      return r[`Score_${map[d]}`] || 0;
-    }));
-    if (maxScore >= 4) {
-      const delBtn = el("button", {className:"btn btn-danger btn-sm", onClick: async () => {
-        if (!confirm(`¿Eliminar la evaluación de ${evaluator?.Nombre || r.EvaluadorNombre}? El evaluador podrá rehacerla.`)) return;
-        state.loading = true; render();
-        try {
-          await deleteRespuesta(r.Periodo, r.ID);
-          await loadResponses(subject.ID);
-          state.reportSubject = subject;
-          state.view = "adminReport";
-        } catch(e) { alert("Error: " + e.message); }
-        state.loading = false; render();
-      }}, "🗑 Eliminar");
-      evalHeader.appendChild(delBtn);
-    }
-    rRow.appendChild(evalHeader);
-
-    DRIVER_ORDER.forEach(d => {
-      const map = { capacidad_analitica:"CapAnalit", excelencia_entrega:"ExcEntrega", trabajo_equipo:"TrabEquipo", gestion:"Gestion", interlocucion:"Interlocucion", conocimiento_tecnico:"ConocTecnico" };
-      const key = map[d];
-      const score = r[`Score_${key}`];
-      if (!score) return;
-      const dRow = el("div", {className:"response-driver"});
-      const scoreSpan = el("span", {style:{fontWeight:"700"}});
-      scoreSpan.style.color = getScoreColor(score.toString());
-      scoreSpan.textContent = score;
-      dRow.appendChild(document.createTextNode(`${DRIVER_NAMES[d]}: `));
-      dRow.appendChild(scoreSpan);
-      const pick = r[`Pick_${key}`];
-      const comment = r[`Comment_${key}`];
-      if (pick || comment) {
-        dRow.appendChild(document.createTextNode(` — ${pick || ""}${pick && comment ? ". " : ""}${comment || ""}`));
-      }
-      rRow.appendChild(dRow);
-    });
-    adminSection.appendChild(rRow);
-  });
-  cont.appendChild(adminSection);
-  } // end isRootAdmin
+  // Admin-only section — SOLO en pestaña Admin (renderAdminRootReport), nunca aquí
   return cont;
 }
 
@@ -2470,15 +2412,16 @@ function renderResumenCampana(campana, responses) {
         hayPendientes = true;
       }
     } else {
-      // Sin selección guardada — pendiente si no ha enviado ninguna evaluación
-      if (evaluadosIDs.length === 0) {
+      // Sin selección guardada — si ya envió evaluaciones, mostrar como finalizado con las que hizo
+      // Si no envió ninguna, mostrar como pendiente "sin iniciar"
+      if (evaluadosIDs.length > 0) {
+        doneCard.appendChild(el("div", {style:{fontSize:"13px",color:"var(--green)",padding:"3px 0"}},
+          `· ${ev.Nombre} (${evaluadosIDs.length} evaluados · selección no guardada)`));
+        hayFinalizados = true;
+      } else {
         pendCard.appendChild(el("div", {style:{fontSize:"13px",color:"var(--yellow)",padding:"3px 0"}},
           `· ${ev.Nombre} — sin iniciar`));
         hayPendientes = true;
-      } else {
-        doneCard.appendChild(el("div", {style:{fontSize:"13px",color:"var(--green)",padding:"3px 0"}},
-          `· ${ev.Nombre} (${evaluadosIDs.length} evaluados)`));
-        hayFinalizados = true;
       }
     }
   });
