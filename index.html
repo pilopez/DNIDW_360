@@ -915,7 +915,9 @@ function getDriverConfig(subject) {
 // LOAD DATA
 // ═══════════════════════════════════════════════════════
 async function loadTeam() {
-  state.team = await apiRequest("GetEquipo");
+  // Admin ve todos (activos e inactivos), evaluador solo activos
+  const endpoint = state.isAdmin ? "GetEquipo?all=true" : "GetEquipo";
+  state.team = await apiRequest(endpoint);
 }
 
 async function loadEvaluators() {
