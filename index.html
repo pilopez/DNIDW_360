@@ -2594,9 +2594,10 @@ async function renderResumenCampana(campana, responses) {
   });
   cont.appendChild(driversCard);
 
-  // Evaluadores con scores extremos (solo 4 y 5)
-  const extremos = evaluadoresIDs.filter(evID => {
+  // Evaluadores con scores extremos (solo 4 y 5) — sesgo positivo
+  const extremosPos = evaluadoresIDs.filter(evID => {
     const evResps = responses.filter(r => r.EvaluadorID === evID);
+    if (!evResps.length) return false;
     return evResps.every(r => DRIVER_ORDER.every(d => {
       const map = { capacidad_analitica:"CapAnalit", excelencia_entrega:"ExcEntrega", trabajo_equipo:"TrabEquipo", gestion:"Gestion", interlocucion:"Interlocucion", conocimiento_tecnico:"ConocTecnico" };
       const score = r[`Score_${map[d]}`] || 0;
@@ -2604,15 +2605,61 @@ async function renderResumenCampana(campana, responses) {
     }));
   });
 
-  if (extremos.length) {
-    const extremosCard = el("div", {className:"card", style:{marginBottom:"16px", background:"#FFFBEB", borderColor:"#FDE68A"}});
-    extremosCard.appendChild(el("div", {className:"section-label"}, "⚠️ Evaluadores con sesgo positivo (solo puntuaciones 4 y 5)"));
-    extremosCard.appendChild(el("div", {style:{fontSize:"12px", color:"var(--yellow)", marginBottom:"8px"}}, "Estos evaluadores han usado exclusivamente puntuaciones altas en todas sus evaluaciones. Considera revisarlas."));
-    extremos.forEach(evID => {
+  // Evaluadores con scores extremos (solo 1 y 2) — sesgo negativo
+  const extremosNeg = evaluadoresIDs.filter(evID => {
+    const evResps = responses.filter(r => r.EvaluadorID === evID);
+    if (!evResps.length) return false;
+    return evResps.every(r => DRIVER_ORDER.every(d => {
+      const map = { capacidad_analitica:"CapAnalit", excelencia_entrega:"ExcEntrega", trabajo_equipo:"TrabEquipo", gestion:"Gestion", interlocucion:"Interlocucion", conocimiento_tecnico:"ConocTecnico" };
+      const score = r[`Score_${map[d]}`] || 0;
+      return score === 0 || score <= 2;
+    }));
+  });
+
+  // Evaluadores con uniformidad total (todos los scores iguales)
+  const extremosUnif = evaluadoresIDs.filter(evID => {
+    if (extremosPos.includes(evID) || extremosNeg.includes(evID)) return false;
+    const evResps = responses.filter(r => r.EvaluadorID === evID);
+    if (!evResps.length) return false;
+    const allScores = evResps.flatMap(r => DRIVER_ORDER.map(d => {
+      const map = { capacidad_analitica:"CapAnalit", excelencia_entrega:"ExcEntrega", trabajo_equipo:"TrabEquipo", gestion:"Gestion", interlocucion:"Interlocucion", conocimiento_tecnico:"ConocTecnico" };
+      return r[`Score_${map[d]}`] || 0;
+    })).filter(s => s > 0);
+    if (!allScores.length) return false;
+    return allScores.every(s => s === allScores[0]);
+  });
+
+  if (extremosPos.length) {
+    const card = el("div", {className:"card", style:{marginBottom:"16px", background:"#FFFBEB", border:"1px solid #FDE68A"}});
+    card.appendChild(el("div", {className:"section-label"}, "⚠️ Sesgo positivo — puntuaciones exclusivamente altas (4 y 5)"));
+    card.appendChild(el("div", {style:{fontSize:"12px", color:"#92400E", marginBottom:"8px"}}, "Estos evaluadores han usado solo puntuaciones altas en todas sus evaluaciones. Considera revisarlas para asegurar objetividad."));
+    extremosPos.forEach(evID => {
       const evaluador = state.evaluators.find(e => e.ID === evID || e.Email === evID);
-      extremosCard.appendChild(el("div", {style:{fontSize:"13px", color:"var(--text)", padding:"3px 0"}}, `· ${evaluador?.Nombre || evID}`));
+      card.appendChild(el("div", {style:{fontSize:"13px", color:"var(--text)", padding:"3px 0"}}, `· ${evaluador?.Nombre || evID}`));
     });
-    cont.appendChild(extremosCard);
+    cont.appendChild(card);
+  }
+
+  if (extremosNeg.length) {
+    const card = el("div", {className:"card", style:{marginBottom:"16px", background:"#FEF2F2", border:"1px solid #FECACA"}});
+    card.appendChild(el("div", {className:"section-label"}, "⚠️ Sesgo negativo — puntuaciones exclusivamente bajas (1 y 2)"));
+    card.appendChild(el("div", {style:{fontSize:"12px", color:"#991B1B", marginBottom:"8px"}}, "Estos evaluadores han usado solo puntuaciones bajas en todas sus evaluaciones. Puede indicar un sesgo negativo o un conflicto de percepción."));
+    extremosNeg.forEach(evID => {
+      const evaluador = state.evaluators.find(e => e.ID === evID || e.Email === evID);
+      card.appendChild(el("div", {style:{fontSize:"13px", color:"var(--text)", padding:"3px 0"}}, `· ${evaluador?.Nombre || evID}`));
+    });
+    cont.appendChild(card);
+  }
+
+  if (extremosUnif.length) {
+    const card = el("div", {className:"card", style:{marginBottom:"16px", background:"#F5F3FF", border:"1px solid #DDD6FE"}});
+    card.appendChild(el("div", {className:"section-label"}, "⚠️ Sesgo de uniformidad — todas las puntuaciones idénticas"));
+    card.appendChild(el("div", {style:{fontSize:"12px", color:"#5B21B6", marginBottom:"8px"}}, "Estos evaluadores han dado exactamente la misma puntuación en todos los drivers y evaluados. La evaluación pierde valor diferenciador."));
+    extremosUnif.forEach(evID => {
+      const evaluador = state.evaluators.find(e => e.ID === evID || e.Email === evID);
+      card.appendChild(el("div", {style:{fontSize:"13px", color:"var(--text)", padding:"3px 0"}}, `· ${evaluador?.Nombre || evID}`));
+    });
+    cont.appendChild(card);
   }
 
   app.appendChild(cont);
