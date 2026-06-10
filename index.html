@@ -816,7 +816,6 @@ const state = {
   view: "login",        // login | selectSubjects | evalList | evalForm | done | adminDash | adminReport | adminConfig | adminCampanas | adminConfigDrivers | adminRoot | adminRootReport
   isAdmin: false,
   isRootAdmin: false,
-  biasedEvaluators: new Set(),
   currentUser: null,
   currentSubject: null,
   scores: {},
@@ -952,15 +951,12 @@ async function loadCampanas() {
 }
 
 async function loadResponses(subjectId = null) {
+  // Usar el ID único de campaña (RowKey) como identificador, no el nombre
   const periodoID = state.campanaActiva?.ID || state.campanas.find(c => c.Activa)?.ID || CONFIG.periodo;
   const params = subjectId
     ? `GetRespuestas?periodoID=${encodeURIComponent(periodoID)}&evaluadoID=${subjectId}`
     : `GetRespuestas?periodoID=${encodeURIComponent(periodoID)}`;
   state.responses = await apiRequest(params);
-  // Recalcular evaluadores sesgados sobre el total (solo cuando cargamos todas las respuestas)
-  if (!subjectId) {
-    state.biasedEvaluators = detectBiasedEvaluators(state.responses);
-  }
 }
 
 async function loadConfigDrivers(evaluadoID) {
@@ -1004,56 +1000,36 @@ function hasSubmitted(subjectId) {
 // ═══════════════════════════════════════════════════════
 // CALCULATIONS
 // ═══════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════
-// DETECCIÓN DE SESGO — excluye evaluadores sesgados del cómputo
-// ═══════════════════════════════════════════════════════
-function detectBiasedEvaluators(allResponses) {
-  const evaluadoresIDs = [...new Set(allResponses.map(r => r.EvaluadorID))];
-  const biased = new Set();
-  evaluadoresIDs.forEach(evID => {
-    const evResps = allResponses.filter(r => r.EvaluadorID === evID);
-    if (!evResps.length) return;
-    // Sesgo positivo: todos los scores >= 4
-    const allHigh = evResps.every(r => DRIVER_ORDER.every(d => {
-      const score = r[getFieldName(d, "Score")] || 0;
-      return score === 0 || score >= 4;
-    }));
-    // Sesgo negativo: todos los scores <= 2
-    const allLow = evResps.every(r => DRIVER_ORDER.every(d => {
-      const score = r[getFieldName(d, "Score")] || 0;
-      return score === 0 || score <= 2;
-    }));
-    if (allHigh || allLow) biased.add(evID);
-  });
-  return biased;
-}
-
-// Filtra respuestas eliminando las de evaluadores con sesgo
-function filterBiased(responses) {
-  if (!state.biasedEvaluators || !state.biasedEvaluators.size) return responses;
-  return responses.filter(r => !state.biasedEvaluators.has(r.EvaluadorID));
-}
-
 function calcWeightedAvg(responses, role, subject) {
-  const filtered = filterBiased(responses);
-  if (!filtered.length) return null;
+  if (!responses.length) return null;
   const cfg = subject ? getDriverConfig(subject) : (DRIVERS_CONFIG[role] || DRIVERS_CONFIG["Senior Consultant"]);
   if (!cfg) return null;
   let total = 0;
-  filtered.forEach(r => {
+  responses.forEach(r => {
     DRIVER_ORDER.forEach(d => {
       const field = getFieldName(d, "Score");
       const score = r[field];
       if (score) total += score * (cfg.weights[d] || 0);
     });
   });
-  return (total / filtered.length).toFixed(2);
+  return (total / responses.length).toFixed(2);
+}
+
+function getFieldName(driverId, prefix) {
+  const map = {
+    capacidad_analitica: "CapAnalit",
+    excelencia_entrega: "ExcEntrega",
+    trabajo_equipo: "TrabEquipo",
+    gestion: "Gestion",
+    interlocucion: "Interlocucion",
+    conocimiento_tecnico: "ConocTecnico"
+  };
+  return `${prefix}_${map[driverId]}`;
 }
 
 function calcDriverAvg(responses, driverId) {
-  const filtered = filterBiased(responses);
   const field = getFieldName(driverId, "Score");
-  const scores = filtered.map(r => r[field]).filter(s => s > 0);
+  const scores = responses.map(r => r[field]).filter(s => s > 0);
   if (!scores.length) return null;
   return (scores.reduce((a,b) => a+b, 0) / scores.length).toFixed(1);
 }
@@ -1961,17 +1937,7 @@ function renderAdminReport() {
     return cont;
   }
 
-  // Nota si hay evaluaciones excluidas por sesgo
-  const excluded = responses.filter(r => state.biasedEvaluators?.has(r.EvaluadorID));
-  if (excluded.length) {
-    const noteCard = el("div", {style:{
-      background:"#F0F9FF", border:"1px solid #BAE6FD",
-      borderRadius:"10px", padding:"12px 16px", marginBottom:"16px",
-      fontSize:"13px", color:"#0369A1"
-    }});
-    noteCard.textContent = `ℹ️ ${excluded.length} evaluación${excluded.length > 1 ? "es excluidas" : " excluida"} del cómputo por sesgo detectado. La puntuación refleja solo las valoraciones objetivas.`;
-    cont.appendChild(noteCard);
-  }
+  // Overall score card
   const overallCard = el("div", {className:"card", style:{marginBottom:"16px"}});
   overallCard.style.background = avg ? getScoreBg(avg) : "var(--indra-light)";
   overallCard.style.borderColor = avg ? getScoreColor(avg) + "40" : "rgba(0,61,165,0.2)";
