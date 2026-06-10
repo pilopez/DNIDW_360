@@ -2061,31 +2061,136 @@ function renderAdminReport() {
   twoCol.appendChild(sCard); twoCol.appendChild(aCard);
   cont.appendChild(twoCol);
 
-  // Aggregated comments (anonymous)
+  // Aggregated comments — resumen ejecutivo con Claude API
   const commCard = el("div", {className:"card", style:{marginBottom:"16px"}});
   commCard.appendChild(el("div", {className:"section-label"}, "Tendencias de feedback (anonimizado)"));
+
+  // Recopilar picks y comentarios por driver (usando respuestas filtradas sin sesgados)
+  const feedbackByDriver = {};
+  const filteredResponses = filterBiased(responses);
   DRIVER_ORDER.forEach(d => {
     const map = { capacidad_analitica:"CapAnalit", excelencia_entrega:"ExcEntrega", trabajo_equipo:"TrabEquipo", gestion:"Gestion", interlocucion:"Interlocucion", conocimiento_tecnico:"ConocTecnico" };
     const key = map[d];
     const picks = {};
     const freeComments = [];
-    responses.forEach(r => {
+    filteredResponses.forEach(r => {
       if (r[`Pick_${key}`]) picks[r[`Pick_${key}`]] = (picks[r[`Pick_${key}`]] || 0) + 1;
-      if (r[`Comment_${key}`]) freeComments.push(r[`Comment_${key}`]);
+      if (r[`Comment_${key}`] && !Object.values(picks).includes(r[`Comment_${key}`])) {
+        if (!freeComments.includes(r[`Comment_${key}`])) freeComments.push(r[`Comment_${key}`]);
+      }
     });
-    const topPick = Object.entries(picks).sort((a,b) => b[1]-a[1])[0];
-    if (!topPick && !freeComments.length) return;
-    const block = el("div", {className:"comment-block"});
-    block.appendChild(el("div", {className:"comment-block-title"}, `${DRIVER_ICONS[d]} ${DRIVER_NAMES[d]}`));
-    if (topPick) {
-      block.appendChild(el("div", {className:"comment-trend"}, `Tendencia del equipo: "${topPick[0]}" (${topPick[1]} menciones)`));
+    const sortedPicks = Object.entries(picks).sort((a,b) => b[1]-a[1]);
+    if (sortedPicks.length || freeComments.length) {
+      feedbackByDriver[d] = { picks: sortedPicks, comments: freeComments };
     }
-    freeComments.forEach(c => {
-      block.appendChild(el("div", {className:"comment-free"}, c));
-    });
-    commCard.appendChild(block);
   });
+
+  if (!Object.keys(feedbackByDriver).length) {
+    commCard.appendChild(el("div", {className:"empty"}, "Sin comentarios aún."));
+    cont.appendChild(commCard);
+    return cont;
+  }
+
+  // Mostrar spinner mientras se genera el resumen
+  const summaryContainer = el("div");
+  summaryContainer.appendChild(el("div", {style:{color:"var(--faint)",fontSize:"13px",padding:"12px 0",textAlign:"center"}}, "⟳ Generando resumen ejecutivo..."));
+  commCard.appendChild(summaryContainer);
   cont.appendChild(commCard);
+
+  // Llamar a la API de Claude para generar el resumen ejecutivo
+  (async () => {
+    try {
+      const driverSummaries = Object.entries(feedbackByDriver).map(([d, data]) => {
+        const picksText = data.picks.map(([p, n]) => `"${p}" (${n} menciones)`).join(", ");
+        const commentsText = data.comments.map(c => `- ${c}`).join("\n");
+        return `### ${DRIVER_NAMES[d]}\nFeedback estructurado: ${picksText || "ninguno"}\nComentarios libres:\n${commentsText || "ninguno"}`;
+      }).join("\n\n");
+
+      const prompt = `Eres un experto en evaluación del desempeño profesional. A continuación tienes el feedback agregado y anonimizado de un equipo sobre un profesional, organizado por competencia. 
+
+Tu tarea es generar un resumen ejecutivo por competencia que:
+1. Sea conciso (máximo 2-3 frases por competencia)
+2. Integre los patrones del feedback estructurado y los comentarios libres
+3. Identifique la tendencia principal del equipo
+4. Use lenguaje profesional y constructivo
+5. NO repita literalmente los textos originales — sintetiza e interpreta
+
+Responde SOLO con JSON válido, sin texto adicional, con esta estructura exacta:
+{
+  "capacidad_analitica": "resumen ejecutivo",
+  "excelencia_entrega": "resumen ejecutivo",
+  "trabajo_equipo": "resumen ejecutivo",
+  "gestion": "resumen ejecutivo",
+  "interlocucion": "resumen ejecutivo",
+  "conocimiento_tecnico": "resumen ejecutivo"
+}
+
+Solo incluye los drivers que tengan feedback. Si un driver no tiene feedback, omítelo del JSON.
+
+FEEDBACK A SINTETIZAR:
+${driverSummaries}`;
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+
+      const data = await response.json();
+      const rawText = data.content?.[0]?.text || "";
+      const clean = rawText.replace(/```json|```/g, "").trim();
+      const summaries = JSON.parse(clean);
+
+      summaryContainer.innerHTML = "";
+      DRIVER_ORDER.forEach(d => {
+        if (!summaries[d] && !feedbackByDriver[d]) return;
+        const block = el("div", {className:"comment-block"});
+        block.appendChild(el("div", {className:"comment-block-title"}, `${DRIVER_ICONS[d]} ${DRIVER_NAMES[d]}`));
+        // Top pick como tendencia
+        if (feedbackByDriver[d]?.picks?.length) {
+          const [topPick, topCount] = feedbackByDriver[d].picks[0];
+          block.appendChild(el("div", {className:"comment-trend"}, `Tendencia del equipo: "${topPick}" (${topCount} menciones)`));
+        }
+        // Resumen ejecutivo generado por IA
+        if (summaries[d]) {
+          const aiDiv = el("div", {style:{
+            fontSize:"13px", color:"var(--text)", marginTop:"8px",
+            padding:"10px 14px", background:"var(--surface)",
+            borderRadius:"8px", borderLeft:"3px solid var(--indra)",
+            lineHeight:"1.6"
+          }});
+          aiDiv.textContent = summaries[d];
+          block.appendChild(aiDiv);
+        }
+        summaryContainer.appendChild(block);
+      });
+
+    } catch(e) {
+      // Fallback: mostrar sin IA si falla
+      summaryContainer.innerHTML = "";
+      DRIVER_ORDER.forEach(d => {
+        if (!feedbackByDriver[d]) return;
+        const block = el("div", {className:"comment-block"});
+        block.appendChild(el("div", {className:"comment-block-title"}, `${DRIVER_ICONS[d]} ${DRIVER_NAMES[d]}`));
+        if (feedbackByDriver[d].picks.length) {
+          const [topPick, topCount] = feedbackByDriver[d].picks[0];
+          block.appendChild(el("div", {className:"comment-trend"}, `Tendencia: "${topPick}" (${topCount} menciones)`));
+        }
+        // Deduplicar comentarios libres
+        const uniqueComments = [...new Set(feedbackByDriver[d].comments)];
+        if (uniqueComments.length) {
+          const cDiv = el("div", {className:"comment-free"});
+          cDiv.textContent = uniqueComments.slice(0, 3).join(" · ");
+          block.appendChild(cDiv);
+        }
+        summaryContainer.appendChild(block);
+      });
+    }
+  })();
 
   // Admin-only section — SOLO en pestaña Admin (renderAdminRootReport), nunca aquí
   return cont;
