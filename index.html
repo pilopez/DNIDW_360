@@ -1883,9 +1883,31 @@ function renderAdminDash() {
 
   const totalResp = state.responses.length;
   const totalEvals = state.evaluators.length;
+
+  // Construir lista de evaluados para esta campaña:
+  // Siempre incluir los que tienen respuestas (histórico), más los activos actuales sin duplicar
+  const evaluadosEnRespuestas = {};
+  state.responses.forEach(r => {
+    if (r.EvaluadoID && !evaluadosEnRespuestas[r.EvaluadoID]) {
+      evaluadosEnRespuestas[r.EvaluadoID] = { ID: r.EvaluadoID, Nombre: r.EvaluadoNombre || r.EvaluadoID, _fromHistory: true };
+    }
+  });
+  // Enriquecer con datos completos de state.team cuando coincidan
+  const teamMap = {};
+  state.team.forEach(m => { teamMap[m.ID] = m; });
+  const evaluadosMerged = Object.values(evaluadosEnRespuestas).map(h => teamMap[h.ID] || h);
+  // Añadir activos que no tienen respuestas aún (para campaña en curso)
+  state.team.filter(m => m.Activo !== false && !evaluadosEnRespuestas[m.ID]).forEach(m => evaluadosMerged.push(m));
+  // Ordenar: primero los que tienen respuestas, luego el resto
+  evaluadosMerged.sort((a, b) => {
+    const ra = state.responses.filter(r => r.EvaluadoID === a.ID).length;
+    const rb = state.responses.filter(r => r.EvaluadoID === b.ID).length;
+    return rb - ra;
+  });
+
   const stats = el("div", {className:"stats-grid"});
   [
-    {n: state.team.length, l: "Evaluados activos"},
+    {n: evaluadosMerged.length, l: "Evaluados en campaña"},
     {n: totalEvals, l: "Evaluadores activos"},
     {n: totalResp, l: "Total respuestas"}
   ].forEach(({n,l}) => {
@@ -1896,7 +1918,7 @@ function renderAdminDash() {
   });
   cont.appendChild(stats);
 
-  state.team.forEach(member => {
+  evaluadosMerged.forEach(member => {
     const memberResponses = state.responses.filter(r => r.EvaluadoID === member.ID);
     const avg = calcWeightedAvg(memberResponses, member.Rol, member);
     const avgNum = avg ? parseFloat(avg) : 0;
@@ -2382,12 +2404,22 @@ function renderAdminConfig() {
         render();
       }}, "🔑 Contraseña"));
     }
-    item.appendChild(el("button", {className:"btn btn-danger btn-sm", onClick: async () => {
-      if (confirm(`¿Eliminar a ${m.Nombre}?`)) {
-        await deleteListItem(CONFIG.lists.equipo, m.ID);
-        await loadTeam(); await loadEvaluators(); render();
+    // Desactivar en lugar de eliminar — preserva histórico de campañas anteriores
+    const isActive = m.Activo !== false;
+    item.appendChild(el("button", {
+      className: isActive ? "btn btn-danger btn-sm" : "btn btn-sm",
+      style: isActive ? {} : {background:"var(--green-bg)", color:"var(--green)", border:"1px solid var(--green)"},
+      onClick: async () => {
+        const action = isActive ? "desactivar" : "reactivar";
+        if (confirm(`¿${action.charAt(0).toUpperCase()+action.slice(1)} a ${m.Nombre}?\n\n${isActive ? "Dejará de aparecer en nuevas campañas pero se conserva el histórico." : "Volverá a estar disponible en nuevas campañas."}`)) {
+          await apiRequest(`ManageData?table=Equipo&id=${m.ID}`, {
+            method: "POST",
+            body: JSON.stringify({ Activo: !isActive })
+          });
+          await loadTeam(); await loadEvaluators(); render();
+        }
       }
-    }}, "Eliminar"));
+    }, isActive ? "Desactivar" : "Reactivar"));
     cont.appendChild(item);
   });
 
