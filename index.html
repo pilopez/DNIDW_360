@@ -1646,17 +1646,26 @@ function renderEvalForm() {
     h.appendChild(document.createTextNode("💬"));
     const t = el("div");
     t.appendChild(el("div", {}, "Comentario final"));
-    t.appendChild(el("div", {className:"driver-weight"}, "Opcional — impresión general o contexto adicional"));
+    t.appendChild(el("div", {className:"driver-weight"}, "Obligatorio — necesario para enviar la evaluación"));
     h.appendChild(t);
     return h;
   })()));
   const finalTA = el("textarea", {
-    placeholder: "¿Algún comentario global sobre esta persona? Puedes añadir contexto, fortalezas destacadas, áreas de mejora, o cualquier aspecto que no hayas podido reflejar en los drivers anteriores...",
+    id: "final-comment-ta",
+    placeholder: "¿Cuál es tu impresión general? Añade contexto, fortalezas destacadas, áreas de mejora, o cualquier aspecto que no hayas podido reflejar en los drivers anteriores... (campo obligatorio)",
     rows: "3",
     style: { width:"100%", fontSize:"13px", padding:"10px", borderRadius:"8px", border:"1px solid var(--border)", resize:"vertical" }
   });
   finalTA.value = state.comentarioFinal || "";
-  finalTA.addEventListener("input", () => { state.comentarioFinal = finalTA.value; });
+  finalTA.addEventListener("input", () => {
+    state.comentarioFinal = finalTA.value;
+    // Quitar borde rojo al escribir
+    if (finalTA.value.trim()) {
+      finalTA.style.border = "1px solid var(--border)";
+      finalTA.style.outline = "";
+    }
+    updateSubmitBtn();
+  });
   finalCard.appendChild(finalTA);
   cont.appendChild(finalCard);
 
@@ -1665,6 +1674,18 @@ function renderEvalForm() {
   const submitBtn = el("button", {id:"submit-btn", className:"btn btn-primary btn-full"}, "Enviar evaluación →");
   submitBtn.disabled = !canSubmit();
   submitBtn.addEventListener("click", submitEvaluation);
+  // Al hacer click con botón deshabilitado, resaltar el campo que falta
+  submitWrap.addEventListener("click", () => {
+    if (!state.comentarioFinal?.trim()) {
+      const ta = document.getElementById("final-comment-ta");
+      if (ta) {
+        ta.style.border = "2px solid #dc3545";
+        ta.style.outline = "none";
+        ta.scrollIntoView({ behavior: "smooth", block: "center" });
+        ta.focus();
+      }
+    }
+  });
   submitWrap.appendChild(submitBtn);
   cont.appendChild(submitWrap);
 
@@ -1835,6 +1856,7 @@ function renderSuggestionsSection(container, dId, cfg) {
 function canSubmit() {
   const naCount = DRIVER_ORDER.filter(d => state.scores[d]?.na === true).length;
   if (naCount >= 3) return false; // bloquear si ≥3 N/A
+  if (!state.comentarioFinal?.trim()) return false; // comentario final obligatorio
   return DRIVER_ORDER.every(d => {
     const v = state.scores[d];
     if (v?.na === true) return true; // N/A cuenta como válido (mientras <3)
@@ -1868,7 +1890,19 @@ function updateSubmitBtn() {
     }
   } else {
     if (naWarn) naWarn.remove();
-    btn.disabled = !canSubmit();
+    const ok = canSubmit();
+    btn.disabled = !ok;
+    // Borde rojo en textarea si falta comentario final
+    const ta = document.getElementById("final-comment-ta");
+    if (ta) {
+      if (!state.comentarioFinal?.trim()) {
+        ta.style.border = "2px solid #dc3545";
+        ta.style.outline = "none";
+      } else {
+        ta.style.border = "1px solid var(--border)";
+        ta.style.outline = "";
+      }
+    }
   }
 }
 
