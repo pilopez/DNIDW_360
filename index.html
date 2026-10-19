@@ -971,7 +971,8 @@ async function loadConfigDrivers(evaluadoID) {
       Peso: item.Peso,
       Criterio1: item.Criterio1,
       Criterio2: item.Criterio2,
-      Criterios: item.Criterios || null
+      Criterios: item.Criterios || null,
+      Criterio5: item.Criterio5 || ""   // ← nuevo: criterio de excelencia para score 5
     };
   });
 }
@@ -1501,6 +1502,7 @@ function renderEvalList() {
       item.addEventListener("click", async () => {
         state.currentSubject = member;
         state.scores = {};
+        state.comentarioFinal = "";
         // Load custom driver config for this subject
         await loadConfigDrivers(member.ID);
         state.view = "evalForm";
@@ -1585,21 +1587,46 @@ function renderEvalForm() {
 
     // Score buttons
     const scoreRow = el("div", {className:"score-row"});
+    const isNA = state.scores[dId]?.na === true;
     [1,2,3,4,5].forEach(s => {
-      const btn = el("button", {className:`score-btn${scoreVal === s ? ` active-${s}` : ""}`}, String(s));
+      const btn = el("button", {className:`score-btn${!isNA && scoreVal === s ? ` active-${s}` : ""}`}, String(s));
+      if (isNA) btn.disabled = true;
       btn.addEventListener("click", () => {
         if (!state.scores[dId]) state.scores[dId] = {};
         state.scores[dId].score = s;
         state.scores[dId].pick = "";
+        state.scores[dId].na = false;
         renderDriverSection(driverCard, dId, cfg);
         updateProgress();
       });
       scoreRow.appendChild(btn);
     });
-    if (scoreVal) {
+    // Botón N/A
+    const naBtn = el("button", {
+      className: `score-btn${isNA ? " active-na" : ""}`,
+      style: { marginLeft: "8px", background: isNA ? "#6c757d" : "", color: isNA ? "#fff" : "", border: isNA ? "2px solid #495057" : "" }
+    }, "N/A");
+    naBtn.addEventListener("click", () => {
+      if (!state.scores[dId]) state.scores[dId] = {};
+      const newNA = !state.scores[dId].na;
+      state.scores[dId].na = newNA;
+      if (newNA) {
+        state.scores[dId].score = null;
+        state.scores[dId].pick = "";
+        state.scores[dId].comment = "";
+      }
+      renderDriverSection(driverCard, dId, cfg);
+      updateProgress();
+    });
+    scoreRow.appendChild(naBtn);
+    if (!isNA && scoreVal) {
       const lbl = el("span", {className:"score-label"});
       lbl.style.color = SCORE_META[scoreVal].color;
       lbl.textContent = SCORE_META[scoreVal].label;
+      scoreRow.appendChild(lbl);
+    }
+    if (isNA) {
+      const lbl = el("span", {className:"score-label", style:{color:"#6c757d"}}, "No aplica");
       scoreRow.appendChild(lbl);
     }
     driverCard.appendChild(scoreRow);
@@ -1611,6 +1638,27 @@ function renderEvalForm() {
 
     cont.appendChild(driverCard);
   });
+
+  // Comentario final libre (Feature 3)
+  const finalCard = el("div", {className:"driver-card", style:{marginTop:"16px"}});
+  finalCard.appendChild(el("div", {className:"driver-header"}, (() => {
+    const h = el("div", {className:"driver-name"});
+    h.appendChild(document.createTextNode("💬"));
+    const t = el("div");
+    t.appendChild(el("div", {}, "Comentario final"));
+    t.appendChild(el("div", {className:"driver-weight"}, "Opcional — impresión general o contexto adicional"));
+    h.appendChild(t);
+    return h;
+  })()));
+  const finalTA = el("textarea", {
+    placeholder: "¿Algún comentario global sobre esta persona? Puedes añadir contexto, fortalezas destacadas, áreas de mejora, o cualquier aspecto que no hayas podido reflejar en los drivers anteriores...",
+    rows: "3",
+    style: { width:"100%", fontSize:"13px", padding:"10px", borderRadius:"8px", border:"1px solid var(--border)", resize:"vertical" }
+  });
+  finalTA.value = state.comentarioFinal || "";
+  finalTA.addEventListener("input", () => { state.comentarioFinal = finalTA.value; });
+  finalCard.appendChild(finalTA);
+  cont.appendChild(finalCard);
 
   // Submit button
   const submitWrap = el("div", {style:{marginTop:"8px"}});
@@ -1627,22 +1675,47 @@ function renderDriverSection(driverCard, dId, cfg) {
   // Re-render score buttons
   const scoreRow = driverCard.querySelector(".score-row");
   const scoreVal = state.scores[dId]?.score;
+  const isNA = state.scores[dId]?.na === true;
   scoreRow.innerHTML = "";
   [1,2,3,4,5].forEach(s => {
-    const btn = el("button", {className:`score-btn${scoreVal === s ? ` active-${s}` : ""}`}, String(s));
+    const btn = el("button", {className:`score-btn${!isNA && scoreVal === s ? ` active-${s}` : ""}`}, String(s));
+    if (isNA) btn.disabled = true;
     btn.addEventListener("click", () => {
       if (!state.scores[dId]) state.scores[dId] = {};
       state.scores[dId].score = s;
       state.scores[dId].pick = "";
+      state.scores[dId].na = false;
       renderDriverSection(driverCard, dId, cfg);
       updateProgress();
     });
     scoreRow.appendChild(btn);
   });
-  if (scoreVal) {
+  // Botón N/A
+  const naBtn = el("button", {
+    className: `score-btn${isNA ? " active-na" : ""}`,
+    style: { marginLeft: "8px", background: isNA ? "#6c757d" : "", color: isNA ? "#fff" : "", border: isNA ? "2px solid #495057" : "" }
+  }, "N/A");
+  naBtn.addEventListener("click", () => {
+    if (!state.scores[dId]) state.scores[dId] = {};
+    const newNA = !state.scores[dId].na;
+    state.scores[dId].na = newNA;
+    if (newNA) {
+      state.scores[dId].score = null;
+      state.scores[dId].pick = "";
+      state.scores[dId].comment = "";
+    }
+    renderDriverSection(driverCard, dId, cfg);
+    updateProgress();
+  });
+  scoreRow.appendChild(naBtn);
+  if (!isNA && scoreVal) {
     const lbl = el("span", {className:"score-label"});
     lbl.style.color = SCORE_META[scoreVal].color;
     lbl.textContent = SCORE_META[scoreVal].label;
+    scoreRow.appendChild(lbl);
+  }
+  if (isNA) {
+    const lbl = el("span", {className:"score-label", style:{color:"#6c757d"}}, "No aplica");
     scoreRow.appendChild(lbl);
   }
 
@@ -1654,7 +1727,10 @@ function renderDriverSection(driverCard, dId, cfg) {
   const dHeader = driverCard.querySelector(".driver-header");
   const existingBadge = dHeader.querySelector(".score-badge");
   if (existingBadge) existingBadge.remove();
-  if (scoreVal) {
+  if (isNA) {
+    const sb = el("span", {className:"score-badge", style:{background:"#e9ecef", color:"#6c757d", border:"1px solid #adb5bd"}}, "N/A");
+    dHeader.appendChild(sb);
+  } else if (scoreVal) {
     const sb = el("span", {className:"score-badge"});
     sb.style.background = SCORE_META[scoreVal].bg;
     sb.style.color = SCORE_META[scoreVal].color;
@@ -1667,6 +1743,8 @@ function renderDriverSection(driverCard, dId, cfg) {
 
 function renderSuggestionsSection(container, dId, cfg) {
   container.innerHTML = "";
+  const isNA = state.scores[dId]?.na === true;
+  if (isNA) return; // driver marcado N/A: sin sugerencias
   const scoreVal = state.scores[dId]?.score;
   if (!scoreVal) return;
 
@@ -1677,6 +1755,15 @@ function renderSuggestionsSection(container, dId, cfg) {
   if (scoreVal === 5) {
     const note = el("div", {className:"score-note required"}, "⚠ Puntuación 5 — Justificación obligatoria");
     container.appendChild(note);
+    // Mostrar Criterio5 si está configurado (Feature 2B)
+    const driverCfg = state.configDrivers?.[state.currentSubject?.ID]?.[dId];
+    const criterio5 = driverCfg?.Criterio5?.trim();
+    if (criterio5) {
+      const c5box = el("div", {style:{background:"#e8f4fd", border:"1px solid #90caf9", borderRadius:"8px", padding:"10px 12px", marginBottom:"8px", fontSize:"13px"}});
+      c5box.appendChild(el("div", {style:{fontWeight:"700", color:"#1565c0", marginBottom:"4px"}}, "🏆 Criterio de excelencia para esta dimensión:"));
+      c5box.appendChild(el("div", {style:{color:"#1976d2", lineHeight:"1.5"}}, criterio5));
+      container.appendChild(c5box);
+    }
   } else {
     const note = el("div", {className:"score-note"}, SCORE_META[scoreVal].label);
     note.style.color = SCORE_META[scoreVal].color;
@@ -1746,8 +1833,11 @@ function renderSuggestionsSection(container, dId, cfg) {
 }
 
 function canSubmit() {
+  const naCount = DRIVER_ORDER.filter(d => state.scores[d]?.na === true).length;
+  if (naCount >= 3) return false; // bloquear si ≥3 N/A
   return DRIVER_ORDER.every(d => {
     const v = state.scores[d];
+    if (v?.na === true) return true; // N/A cuenta como válido (mientras <3)
     if (!v?.score) return false;
     // Score 5: exige comentario propio y no puede ser solo el pick sin editar
     if (v.score === 5 && (!v.comment?.trim() || v.commentFromPick)) return false;
@@ -1758,7 +1848,7 @@ function canSubmit() {
 }
 
 function updateProgress() {
-  const completed = DRIVER_ORDER.filter(d => state.scores[d]?.score).length;
+  const completed = DRIVER_ORDER.filter(d => state.scores[d]?.score || state.scores[d]?.na).length;
   const countEl = document.getElementById("progress-count");
   if (countEl) countEl.textContent = `${completed}/${DRIVER_ORDER.length}`;
   updateSubmitBtn();
@@ -1766,7 +1856,20 @@ function updateProgress() {
 
 function updateSubmitBtn() {
   const btn = document.getElementById("submit-btn");
-  if (btn) btn.disabled = !canSubmit();
+  if (!btn) return;
+  const naCount = DRIVER_ORDER.filter(d => state.scores[d]?.na === true).length;
+  const naWarn = document.getElementById("na-warning");
+  if (naCount >= 3) {
+    btn.disabled = true;
+    if (!naWarn) {
+      const warn = el("div", {id:"na-warning", className:"alert alert-warn", style:{marginTop:"8px", color:"#856404", background:"#fff3cd", border:"1px solid #ffc107"}},
+        "⚠️ Has marcado 3 o más dimensiones como N/A. No puedes evaluar a esta persona — demasiadas dimensiones no son aplicables a su perfil.");
+      btn.parentNode.insertBefore(warn, btn.nextSibling);
+    }
+  } else {
+    if (naWarn) naWarn.remove();
+    btn.disabled = !canSubmit();
+  }
 }
 
 async function submitEvaluation() {
@@ -1789,10 +1892,18 @@ async function submitEvaluation() {
       const v = state.scores[d] || {};
       const map = { capacidad_analitica:"CapAnalit", excelencia_entrega:"ExcEntrega", trabajo_equipo:"TrabEquipo", gestion:"Gestion", interlocucion:"Interlocucion", conocimiento_tecnico:"ConocTecnico" };
       const key = map[d];
-      item[`Score_${key}`] = v.score || 0;
-      item[`Pick_${key}`] = v.pick || "";
-      item[`Comment_${key}`] = v.comment || "";
+      if (v.na === true) {
+        item[`Score_${key}`] = 0;
+        item[`Pick_${key}`] = "N/A";
+        item[`Comment_${key}`] = "";
+      } else {
+        item[`Score_${key}`] = v.score || 0;
+        item[`Pick_${key}`] = v.pick || "";
+        item[`Comment_${key}`] = v.comment || "";
+      }
     });
+    // Comentario final libre (Feature 3)
+    item["ComentarioFinal"] = state.comentarioFinal || "";
     await apiRequest("PostRespuesta", { method: "POST", body: JSON.stringify(item) });
     await loadResponses();
     state.view = "done";
@@ -2213,6 +2324,51 @@ ${driverSummaries}`;
       });
     }
   })();
+
+  // ─── Comentarios finales libres (Feature 3) ───────────────────────────────
+  const finalComments = filteredResponses.filter(r => r.ComentarioFinal?.trim());
+  if (finalComments.length) {
+    const fcCard = el("div", {className:"card", style:{marginBottom:"16px"}});
+    fcCard.appendChild(el("div", {className:"section-label"}, "💬 Comentarios finales (anonimizados)"));
+
+    const fcContainer = el("div");
+    fcContainer.appendChild(el("div", {style:{color:"var(--faint)", fontSize:"13px", padding:"12px 0", textAlign:"center"}}, "⟳ Generando síntesis de comentarios finales..."));
+    fcCard.appendChild(fcContainer);
+    cont.appendChild(fcCard);
+
+    // Generar síntesis con Claude
+    (async () => {
+      try {
+        const commentsText = finalComments.map((r, i) => `Evaluador ${i+1}: "${r.ComentarioFinal}"`).join("\n");
+        const resp = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "x-api-key": CONFIG.claudeApiKey, "anthropic-version": "2023-06-01", "content-type": "application/json", "anthropic-dangerous-direct-browser-access": "true" },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 400,
+            messages: [{
+              role: "user",
+              content: `Estos son comentarios finales anónimos de varios evaluadores sobre un profesional de consultoría. Sintetiza en 3-4 frases los temas recurrentes, el tono general y cualquier mensaje destacado. Mantén el anonimato, no cites literalmente. Responde solo la síntesis, en español.\n\n${commentsText}`
+            }]
+          })
+        });
+        if (!resp.ok) throw new Error("API error");
+        const data = await resp.json();
+        const synthesis = data.content?.[0]?.text || "";
+        fcContainer.innerHTML = "";
+        const synthDiv = el("div", {style:{fontSize:"13px", color:"var(--text)", padding:"12px 14px", background:"var(--surface)", borderRadius:"8px", borderLeft:"3px solid var(--indra)", lineHeight:"1.6"}});
+        synthDiv.textContent = synthesis;
+        fcContainer.appendChild(synthDiv);
+        fcContainer.appendChild(el("div", {style:{fontSize:"11px", color:"var(--faint)", marginTop:"6px"}}, `Basado en ${finalComments.length} comentario${finalComments.length > 1 ? "s" : ""} final${finalComments.length > 1 ? "es" : ""} anonimizado${finalComments.length > 1 ? "s" : ""}`));
+      } catch(e) {
+        fcContainer.innerHTML = "";
+        finalComments.forEach((r, i) => {
+          const item = el("div", {style:{fontSize:"13px", color:"var(--text)", padding:"8px 10px", background:"var(--surface)", borderRadius:"6px", marginBottom:"6px", borderLeft:"2px solid var(--border)"}}, `Evaluador ${i+1}: "${r.ComentarioFinal}"`);
+          fcContainer.appendChild(item);
+        });
+      }
+    })();
+  }
 
   // Admin-only section — SOLO en pestaña Admin (renderAdminRootReport), nunca aquí
   return cont;
@@ -2880,7 +3036,8 @@ async function renderAdminConfigDrivers() {
       }
       localValues[d] = {
         peso: ov.Peso !== undefined ? ov.Peso : base.weights[d],
-        criterios: [...savedCriterios]
+        criterios: [...savedCriterios],
+        criterio5: ov.Criterio5 || ""  // ← Feature 2B
       };
     });
 
@@ -2946,6 +3103,18 @@ async function renderAdminConfigDrivers() {
       };
       renderCriterios();
       dCard.appendChild(criteriosWrap);
+
+      // Criterio de excelencia para puntuación 5 (Feature 2B)
+      const c5Sep = el("div", {style:{borderTop:"1px dashed var(--border)", margin:"12px 0 10px"}});
+      dCard.appendChild(c5Sep);
+      dCard.appendChild(el("div", {style:{fontSize:"12px", fontWeight:"600", color:"#1565c0", marginBottom:"6px"}}, "🏆 Criterio de excelencia (para score 5):"));
+      dCard.appendChild(el("div", {style:{fontSize:"11px", color:"var(--faint)", marginBottom:"6px"}}, "Se mostrará al evaluador cuando ponga un 5 en esta dimensión para ayudarle a justificar la puntuación."));
+      const c5Input = el("textarea", {rows:"2", placeholder:"Ej: Ha liderado de forma autónoma una propuesta técnica compleja que fue aprobada por el cliente y se convirtió en proyecto real..."});
+      c5Input.value = localValues[d].criterio5;
+      c5Input.style.cssText = "width:100%;padding:8px 10px;border-radius:6px;border:1px solid #90caf9;font-size:12px;font-family:inherit;box-sizing:border-box;resize:vertical;background:#f0f7ff;";
+      c5Input.addEventListener("input", e => { localValues[d].criterio5 = e.target.value; });
+      dCard.appendChild(c5Input);
+
       formCard.appendChild(dCard);
     });
 
@@ -2965,12 +3134,14 @@ async function renderAdminConfigDrivers() {
           const lv = localValues[d];
           const criteriosChanged = JSON.stringify(lv.criterios) !== JSON.stringify(baseCriterios);
           const hasChange = Math.abs(lv.peso - baseW) > 0.001 || criteriosChanged;
-          if (hasChange) {
+          const criterio5Changed = lv.criterio5 !== (state.configDrivers[subject.ID]?.[d]?.Criterio5 || "");
+          if (hasChange || criterio5Changed) {
             await apiRequest("SaveConfig", { method:"POST", body: JSON.stringify({
               EvaluadoID: subject.ID, DriverID: d, Peso: lv.peso,
               Criterio1: lv.criterios[0] || "",
               Criterio2: lv.criterios[1] || "",
-              Criterios: JSON.stringify(lv.criterios)
+              Criterios: JSON.stringify(lv.criterios),
+              Criterio5: lv.criterio5 || ""
             })});
           }
         }
